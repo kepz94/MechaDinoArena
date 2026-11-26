@@ -101,6 +101,13 @@ local VERSION = "1.3" -- v1.3 emote receipts hook
 VERSION = "1.4" -- v1.4 trail receipts hook
 VERSION = "1.5" -- v1.5 SkinPaintBot for filler bots
 VERSION = "1.6" -- v1.6 island streak earn stat
+VERSION = "1.7" -- v1.7 stand claims + SkinGrant
+-- v1.7 (Quest Stand, plan docs/plans/QUEST_STAND_v1.0.md Task 3; picks "Claim at the stand", "Always claimable"): the earn check
+--   skips skins whose unlock has claim == "stand" (UniversalSkins 1.5: Zebra, Storm Front) while script attribute
+--   SkinStandClaimsEnabled ~= false (read per check; false = 1.6, they unlock by themselves again). Skins already owned stay owned.
+--   New server-only BindableFunction SkinGrant (child of this script): Invoke(player, id, reason) -> "ok" / "owned" / "unknown" /
+--   "notLoaded" / "failed" / "disabled" (universal skins off): writes owned[id] in the same UpdateAsync as the earn check, then
+--   SkinUnlocked / SkinUnlockedAt and SkinServerResult "earned". Diagnostic: script SkinQuestGrants.
 -- v1.6 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 3): the earn stats also carry istreak =
 --   max(StatIslandBest, IslandStreak) (SkinStats 1.1) for UniversalSkins 1.4 (Zebra 10, Storm Front 25), and a change of
 --   IslandStreak / StatIslandBest runs the earn check. Switch: script attribute SkinIslandStreakEarnEnabled (default true, read
@@ -796,7 +803,10 @@ checkEarn = function(player)
 	local new = {}
 	for _, id in ipairs(US.ORDER) do
 		local sk = US.SKINS[id]
-		if sk.unlock.kind == "earn" and st.owned[id] ~= true and US.unlocked(id, stats) then table.insert(new, id) end
+		if sk.unlock.kind == "earn" and st.owned[id] ~= true and US.unlocked(id, stats)
+			and not (sk.unlock.claim == "stand" and script:GetAttribute("SkinStandClaimsEnabled") ~= false) then -- v1.7
+			table.insert(new, id)
+		end
 	end
 	if #new == 0 then return end
 	st.granting = true
@@ -828,6 +838,36 @@ if uni then
 	end
 	Players.PlayerAdded:Connect(watch)
 	for _, p in ipairs(Players:GetPlayers()) do watch(p) end
+end
+-- v1.7: SkinGrant for the Quest Stand (see the v1.7 note)
+if script:GetAttribute("SkinStandClaimsEnabled") == nil then script:SetAttribute("SkinStandClaimsEnabled", true) end
+do
+	local grantFn = script:FindFirstChild("SkinGrant") or Instance.new("BindableFunction")
+	grantFn.Name = "SkinGrant"
+	grantFn.Parent = script
+	grantFn.OnInvoke = function(player, id, reason)
+		if not uni then return "disabled" end
+		if typeof(player) ~= "Instance" or not player:IsA("Player") or type(id) ~= "string" or not US.get(id) then return "unknown" end
+		local st = states[player]
+		if not (st and st.loaded and store) then return "notLoaded" end
+		if st.owned[id] == true then return "owned" end
+		local ok, value = pcall(function()
+			return store:UpdateAsync("u" .. player.UserId, function(old)
+				local v = blank(old)
+				v.owned[id] = true
+				return v
+			end)
+		end)
+		if not (ok and player.Parent) then return "failed" end
+		takeValue(st, value)
+		st.owned[id] = true
+		script:SetAttribute("SkinQuestGrants", (script:GetAttribute("SkinQuestGrants") or 0) + 1)
+		publish(player)
+		player:SetAttribute("SkinUnlocked", id)
+		player:SetAttribute("SkinUnlockedAt", workspace:GetServerTimeNow())
+		setResult(player, "earned")
+		return "ok"
+	end
 end
 
 remote.OnServerEvent:Connect(function(player, action, id, forSpecies)

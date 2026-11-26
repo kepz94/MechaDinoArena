@@ -51,6 +51,11 @@ local CollectionService = game:GetService("CollectionService")
 local US = {}
 US.VERSION = "1.3" -- v1.3 price steps bland 149 / glowing 499 / animated 999 (v1.2 Prism 999; v1.1 whole-body animation)
 US.VERSION = "1.4" -- v1.4 island streak unlocks (Zebra 10, Storm Front 25)
+US.VERSION = "1.5" -- v1.5 streak skins claimed at the Quest Stand
+-- v1.5 (Quest Stand, plan docs/plans/QUEST_STAND_v1.0.md Task 3; Kepu 2026-11-26 "this is the only place where you can claim them",
+--   picks "Claim at the stand", "Always claimable"): with US.STAND_CLAIMS (true) the Zebra and Storm Front unlocks get
+--   claim = "stand" (SkinServer 1.7 no longer grants them by itself; QuestServer 1.0 grants them through SkinGrant when claimed) and
+--   the text "10 / 25 kill streak on the island, claim at the Quest Stand". Progress (istreak) is unchanged. false = 1.4.
 -- v1.4 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 1; Kepu 2026-11-26 "a fire streak emblem once you go on a killing spree on the main island. 25 kills streak unlocks the
 --   thunder storm skin. 10 kill streak unlocks the zebra"; roadmap D3 "Streak replaces old";
 --   Storm Front "Earn only"): with US.ISLAND_STREAK_UNLOCKS (true) Zebra unlocks at a 10 kill streak on the island and Storm Front
@@ -252,6 +257,13 @@ US.ISLAND_STREAK_UNLOCKS = true -- v1.4
 if US.ISLAND_STREAK_UNLOCKS then
 	US.SKINS.zebra.unlock = earn("istreak", 10, "Get a 10 kill streak on the island")
 	US.SKINS.storm.unlock = earn("istreak", 25, "Get a 25 kill streak on the island")
+end
+US.STAND_CLAIMS = true -- v1.5
+if US.ISLAND_STREAK_UNLOCKS and US.STAND_CLAIMS then
+	US.SKINS.zebra.unlock.claim = "stand"
+	US.SKINS.zebra.unlock.text = "10 kill streak on the island, claim at the Quest Stand"
+	US.SKINS.storm.unlock.claim = "stand"
+	US.SKINS.storm.unlock.text = "25 kill streak on the island, claim at the Quest Stand"
 end
 for id, sk in pairs(US.SKINS) do
 	sk.id = id
