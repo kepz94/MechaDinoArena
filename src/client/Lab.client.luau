@@ -3079,6 +3079,7 @@ function L2.after() -- after every draw: tips, emote wheel size, text floor, dia
 		local coach = pg:FindFirstChild("TutorialCoach")
 		L2.tips.Visible = script:GetAttribute("LabTipsEnabled") ~= false and tab == "parts" and empty
 			and player:GetAttribute("LabTipDone") ~= true and not (coach and coach:IsA("ScreenGui") and coach.Enabled)
+			and (tonumber(player:GetAttribute("TutStep")) or 0) == 0 -- not during the Tutorial (its coach shows the way)
 		local did = {L2.did.slot, L2.did.part, L2.did.save}
 		for i, s in ipairs(L2.tipSteps) do
 			s.l.Text = did[i] and ("<s>%d  %s</s>"):format(i, s.text) or ("%d  %s"):format(i, s.text)

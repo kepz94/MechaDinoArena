@@ -304,3 +304,30 @@ Units: `u = clamp(H / 38.1, 9, 14)` px. That is 10 at H 381 (phone) and 14 at H 
 ## Filed (Dev Hub, 2026-11-25)
 
 ADR-015. Mockup "Lab Revamp v0.1 (picked B · Slots first)". Tickets MDA-584 (T1) through MDA-591 (T8), blocked in build order.
+
+## Build log (2026-11-25, Kepu "Build")
+
+- T1 LabLayout 1.0: spec written first, failed with the module missing, then PASS 626. Re-run PASS 626 after the chips fix.
+- T2-T6 Lab 2.0: built as one patch (tools/lab2_patch.luau, applied to the repo by tools/lab2_patch.py and in Studio by the same pairs), then Studio fixes:
+  - lab2_patch2: slot names only when the slot is >= 90 px wide, else the part's 3D model. "STOMP SHOCKWA VE" split mid-word in a 63 px slot.
+  - lab2_patch3: SAVE's second line wraps to 2 lines on narrow tiles; LOOKS detail buttons lifted to >= 44 px (were 34).
+  - lablayout_patch1: the LOOKS chips span the right column (were 42 px on EMOTES).
+  - lab2_patch4: tips hidden during the Tutorial.
+- Deviation from the plan text: the 3D model sits in the slot instead of the part name on slots under 90 px (phones, small PC windows). Under 90 px the names cut off mid-word.
+- Studio PC (847 x 616):
+  - Abilities: take off, tap slot -> PICK A PART FOR SLOT V + CANCEL, PUT ON, EQUIP fills the first empty slot, SLOTS FULL toast.
+  - INFO sheet with the live clip and BACK. SAVE -> SAVED ✓.
+  - STATS rows. SKINS / EMOTES (wheel slots >= 44) / TRAILS tabs.
+  - Island Lab: inset panel, 2 tabs.
+- Studio iPhone 17 Pro emulation (750 x 381):
+  - Size audit printed no button under 44 x 44 on ABILITIES (a slot selected), the sheet, STATS, SKINS, EMOTES, and the island Lab (full screen, 2 tabs).
+  - Text renders at about 9-10 px in Silkscreen. The font swap scales it to the width the 11-12 px design text takes; it was 7 px before.
+  - Device emulation was restored to Current device.
+- T7 Tutorial 1.6, run in Studio as a replay at step 5 then step 8:
+  - Equip: 2/4 -> 3/4 -> 4/4 -> CLOSE.
+  - Spend: TAP STATS -> TAP BUY -> STAT +1 -> CLOSE.
+- Test side effects on Kepu's Studio test player (Studio Play saves to the game's data):
+  - Teno got +400 XP (SkillGrantXp) and Survivor I was bought with one point.
+  - Teno slots set to Tail Grab / Boulder Mortar / Stomp Shockwave / Herd Bellow and saved as the pre-game loadout.
+  - SkillTestMaxAllEnabled was turned on in Play only; Edit stays false.
+- Not done in Studio: a real touch tap (the Studio mouse tool does not reach touch emulation); the live phone check after Publish covers it.

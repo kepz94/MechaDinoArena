@@ -3665,3 +3665,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 - IslandTags 1.6: IslandTagsBotsEnabled (true). PersonaPlates 1.0: PersonaPlatesEnabled (true), PersonaPlatesVersion, PersonaPlatesHidden.
 - PracticeServer 1.16: FillerArenaPersona (true). HardpointServer 1.11: HpPersonaEnabled (true); HpBoard rows + p. KillFeedServer 1.3: KillFeedPersonaEnabled (true); entries + kP / vP. PrRoster bot entries + p, w, l.
 - PregameScreen 1.7 / HardpointHUD 1.15 / KillFeed 1.4: FillerPersonaUI (true).
+
+## Lab 2.0 (Lab Revamp v1.0: Lab 2.0 / LabLayout 1.0 / Tutorial 1.6, 2026-11-25, plan docs/plans/LAB_REVAMP_v1.0.md)
+- Lab 2.0 (script, read per draw): `LabTipsEnabled` (true), `LabMinText` (11, the text floor), `LabEmoteGridFrac` (0.45, EMOTES grid share), `LabSlotNameW` (90, slot width that shows part names). LabLayout numbers (script attributes passed through): `LabChMin` (6), `LabMinTap` (44), `LabLeftFrac` (0.42), `LabLeftFracWide` (0.40), `LabWideW` (1000), `LabSlotH` (6 ch), `LabSaveW` (1.25), `LabTwoCardsW` (560), `LabLooksGridFrac` (0.6), `LabArtFrac` (0.26). `LabPillFitEnabled` / `LabPillFitPad` / `LabPillFitTextMin` no longer do anything (the pills are hidden). Diagnostics: script `LabTipStepsDone` ("slot,part,save" 0/1); player `LabTab` (+ "emotes" / "trails"), `LabSheet` (bool), `LabTipDone` (session, GOT IT).
+- Tutorial 1.6 (script): `TutorialLab2Enabled` (true, per frame).
