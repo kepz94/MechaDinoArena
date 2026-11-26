@@ -66,6 +66,16 @@ local HttpService = game:GetService("HttpService")
 local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 mixed bots
 VERSION = "1.7" -- v1.7 hidden while the pre-game screen shows
+VERSION = "1.8" -- v1.8 no park while the arrival loader is up
+-- v1.8 (MDA-598; Kepu 2026-11-26 07:20 live v1032 "sitting on 95 percent for a long ass time ... i also didnt get to pick a dino or
+--   see the presentation"). Cause: on an Arena arrival ModeServer sets InMenu false (mdaPlay) before PracticeServer's arrive() sets
+--   PrInLobby true. The PrInLobby handler below sent DinoModeRequest "menu" at once, with no loader check (the v1.5 Heartbeat
+--   park has one). InMenu true makes EggLoader's arrive screen wait for MainMenuOpen, which never comes in the pre-game, so it
+--   sat at 95% ("menu") through the 30 s lineup and the 8 s intro and let go only when the match started (PrInMatch -> "play"),
+--   under its 45 s timeout. Studio repro (arrive harness, live order: InMenu false, then PrInLobby true): "menu" fired, loader at
+--   95% why=menu until 38.5 s, match already running. Now the PrInLobby handler skips the park while EggLoaderState is loading /
+--   splash / hatching / travel; the v1.5 Heartbeat parks once the loader is done (as designed). Switch: script attribute
+--   PracticeLobbyEggGuardEnabled (true, read per change; false = 1.7).
 local PANEL = Color3.fromRGB(20, 20, 26)
 local YELLOW = Color3.fromRGB(255, 200, 50)
 local MUTED = Color3.fromRGB(143, 153, 170)
@@ -100,7 +110,14 @@ player:GetAttributeChangedSignal("PrInMatch"):Connect(function()
 	if player:GetAttribute("PrInMatch") == true and player:GetAttribute("InMenu") == true then fireMode("play") end
 end)
 player:GetAttributeChangedSignal("PrInLobby"):Connect(function()
-	if player:GetAttribute("PrInLobby") == true and player:GetAttribute("InMenu") == false then fireMode("menu") end
+	if player:GetAttribute("PrInLobby") == true and player:GetAttribute("InMenu") == false then
+		local eggUp = ({loading = true, splash = true, hatching = true, travel = true})[player:GetAttribute("EggLoaderState") or ""]
+		if eggUp and script:GetAttribute("PracticeLobbyEggGuardEnabled") ~= false then -- v1.8: the Heartbeat parks after the loader
+			script:SetAttribute("PracticeLobbyEggGuardSkips", (script:GetAttribute("PracticeLobbyEggGuardSkips") or 0) + 1)
+			return
+		end
+		fireMode("menu")
+	end
 end)
 -- v1.5: keep preview players parked in the menu (a portal arrival starts out of it)
 if script:GetAttribute("PracticeLobbyParkEnabled") == nil then script:SetAttribute("PracticeLobbyParkEnabled", true) end

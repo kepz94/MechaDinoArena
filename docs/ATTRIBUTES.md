@@ -3710,3 +3710,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - QuestServer 1.1 (script): adds `QuestAchievementsEnabled` (true, read per use; false = 1.0). Player `AchDoneList` ("NAME|medal;..." of newly done achievements), `AchDoneAt` (server time). Store value gains `ach = {p, c, n}`. Claim ids `a_<id>`.
 - QuestScreen 1.1 (script): adds `QuestAchTabEnabled` (true, read at start), `QuestAchHitH` (66 design px, tap area of the tabs and achievement CLAIM, read at start), `QuestTabsAvoidTopbar` (true, read per fit), `QuestTabGap` (8 design px), `QuestFreeMouseEnabled` (true, read per open). Diagnostic `QuestTabX`.
 - SkinUnlockPopup 1.1 (script): adds `AchPopupEnabled` (true, per signal). Diagnostic `AchPopupShown`.
+- PracticeLobby 1.8 (script): adds `PracticeLobbyEggGuardEnabled` (true, read per PrInLobby change; false = 1.7). Diagnostic `PracticeLobbyEggGuardSkips`.
