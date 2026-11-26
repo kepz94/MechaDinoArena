@@ -17,14 +17,16 @@
 --   look; the timer billboard is sized in studs (6.6 x 1.45, times the scale) 3.4 x scale studs over the sign, so it no longer covers
 --   the sign from far away. ModelStreamingMode Persistent (StreamingEnabled: FavEggClient needs the egg, clock and prompt).
 -- Switches / numbers (script attributes, read at start): FavEggStandEnabled (true), FavEggStandAngle (225), FavEggPromptRange (20),
---   FavEggStandScale (2.2), FavEggStandRadius (unset = the shop's distance from c).
+--   FavEggStandScale (2.2), FavEggStandRadius (45; unset = the shop's distance from c). Place (Kepu 2026-11-26 "By the quest stand"):
+--   225 at the shop's distance is the bridge mouth (PortalIslet.Bridge at 225), so the default is 315 degrees at 45 studs, the inner
+--   ring between the QUESTS stall (289) and the LOBBY board (347), off the bridge-to-portal line.
 -- Diagnostics: FavEggStandServerVersion, FavEggStandState ("off" / "notHub" / "waiting" / "built" / "error: ...").
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
 
 local VERSION = "1.0"
 script:SetAttribute("FavEggStandServerVersion", VERSION)
-for k, v in pairs({FavEggStandEnabled = true, FavEggStandAngle = 225, FavEggPromptRange = 20, FavEggStandScale = 2.2}) do
+for k, v in pairs({FavEggStandEnabled = true, FavEggStandAngle = 315, FavEggStandRadius = 45, FavEggPromptRange = 20, FavEggStandScale = 2.2}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function state(s) script:SetAttribute("FavEggStandState", s) end
