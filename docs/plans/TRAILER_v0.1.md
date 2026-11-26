@@ -172,3 +172,9 @@ Filming-only (Play session): same TrailerBots / crowd director / FX watcher copi
 "CINE_DOF" (Play only, gone after stop). Account: Raptor slots set to adrenaline / screech / thrusters for the shoot and
 cleared after. Restored after: Play stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false (checked), quality
 Automatic, Output + Asset Manager back, window snapped left.
+
+## Official trailer (2026-11-25 19:15)
+
+Kepu 19:15: "This is perfect. This is our official trailer." Official = Trailer v0.7, C:\Users\Kepu_\Videos\
+MechaDinoArena_Trailer_v0.7.mp4 (29.7 s, 1920x1080 30 fps, silent). Audio not added yet. Not uploaded to the game page
+(Kepu uploads).
