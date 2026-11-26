@@ -215,8 +215,8 @@ button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
     <h3>HOW IT WORKS (ALL OPTIONS)</h3>
     <p><b>Tap</b> the egg → Roblox's own favorite window (the game). <b>Favorite</b> → the roll. <b>Cancel</b> → "FAVORITE TO ROLL", ask again any time.
       Roblox has no like window and no way to check likes, so only the favorite is checked; the sign still asks for both.</p>
-    <p><b>Prize:</b> rarity first (proposed odds, all attributes: Common 50% · Rare 30% · Epic 10% · Legendary 5% · Dino 5%), then any item of that rarity you don't own yet.
-      A dino comes owned with every mecha part maxed. <b>One roll per player, ever.</b> <b>Timer:</b> 48 h from your first visit after launch; at zero the egg is gone for you.</p>
+    <p><b>Prize:</b> rarity first (odds, all attributes: Common 60% · Rare 30% · Epic 5% · Legendary 2% · Dino 3%), then any item of that rarity you don't own yet.
+      A dino comes owned with every mecha part maxed. <b>One roll per player, ever.</b> <b>Timer:</b> 48 h from the first time you see the egg; at zero the egg is gone for you. Picked: <b>B · Prize reel</b>.</p>
     <p><b>Place:</b> the plaza rim at 225°, across from the ARENA portal (shop 160°, quests 290°). Sizes here are the phone sizes; every button is at least 44 px.</p>
   </section>
 </div>
@@ -243,7 +243,7 @@ button:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
     {k: "DINO", n: "Therizino", r: "dino", sw: ["#5e943e", "#283a1e"], extra: "OWNED · ALL MECHA PARTS MAXED"},
     {k: "DINO", n: "Herrera", r: "dino", sw: ["#8a6a3a", "#3a2a10"], extra: "OWNED · ALL MECHA PARTS MAXED"}
   ];
-  const ODDS = [["common", 50], ["rare", 30], ["epic", 10], ["legend", 5], ["dino", 5]];
+  const ODDS = [["common", 60], ["rare", 30], ["epic", 5], ["legend", 2], ["dino", 3]]; // Kepu red-team "Lower paid odds"
   let variant = "a", rolled = false, expired = false, forceDecline = false, ends = Date.now() + 48 * 3600e3 - 1000;
 
   const swBg = (sw) => sw.length > 1 ? `linear-gradient(135deg, ${sw.map((c, i) => `${c} ${i * 100 / sw.length}% ${(i + 1) * 100 / sw.length}%`).join(", ")})` : sw[0];
