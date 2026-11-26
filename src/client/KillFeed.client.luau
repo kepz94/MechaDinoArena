@@ -22,6 +22,9 @@
 -- v1.1 (MDA-423, HardpointHUD 1.5): the lines also stay under HardpointHUD's "Compass" and "CompassUnder" when those are
 --   visible (on narrow screens the compass sits under the pills in the left column; in its usual top row they are higher
 --   than the pills and change nothing).
+-- v1.4 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T7, MDA-581, option A): a killer / victim with kP / vP (KillFeedServer 1.3,
+--   a filler bot persona) gets no BOT tag, like a player. Switch: script attribute FillerPersonaUI (default true, read per line;
+--   false = 1.3).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -31,6 +34,7 @@ local TweenService = game:GetService("TweenService")
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 phone HUD v2: lines top-right
 VERSION = "1.3" -- v1.3 rank badge
+VERSION = "1.4" -- v1.4 filler bot personas: no BOT tag
 -- v1.3 (leaderboards, Kepu 2026-11-24 15:44 pick "Kill feed"; badge look A, font 2 Builder Sans, mockup
 --   docs/mockups/rank_badge_fonts_v0.2.html): on a line, a killer / victim who is a player on this server (kBot / vBot not true,
 --   Players:GetPlayerByUserId(kId / vId)) with a worldwide rank (RankBadge 1.0 rankOf) gets the rank badge just before the
@@ -221,7 +225,7 @@ local function addLine(e)
 	end
 	feedBadge(f, e.kBot, e.kId, 0) -- v1.3
 	text(f, 1, kName, teamColor(e.kTeam), 15)
-	if m.tags and e.kBot == true then tag(f, 2) end
+	if m.tags and e.kBot == true and not (e.kP == true and script:GetAttribute("FillerPersonaUI") ~= false) then tag(f, 2) end -- v1.4
 	if type(e.how) == "string" and e.how ~= "" then
 		local chip = text(f, 3, e.how, CHIP_TEXT, 12)
 		chip.Size = UDim2.fromOffset(0, 16)
@@ -232,7 +236,7 @@ local function addLine(e)
 	end
 	feedBadge(f, e.vBot, e.vId, 4) -- v1.3: before the victim name (same LayoutOrder, added first)
 	text(f, 4, vName, teamColor(e.vTeam), 15)
-	if m.tags and e.vBot == true then tag(f, 5) end
+	if m.tags and e.vBot == true and not (e.vP == true and script:GetAttribute("FillerPersonaUI") ~= false) then tag(f, 5) end -- v1.4
 	f.Parent = feed
 	table.insert(lines, {frame = f, untilT = os.clock() + (me and m.lifeMe or m.life)})
 	while #lines > m.max do

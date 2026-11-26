@@ -36,6 +36,10 @@
 -- v1.1 (Arena 4v4, MDA-491, plan docs/plans/PREGAME_LINEUP_v1.0.md Part 2): ReplicatedStorage.Practice PrArena == true
 --   (PracticeServer 1.10) -> the screens say "ARENA · HARDPOINT" in Arena orange (else as 1.0: a private match "HARDPOINT VS
 --   BOTS" in yellow, a public one "HARDPOINT PRACTICE").
+-- v1.7 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T7, MDA-581, option A): a bot entry with p = true (PracticeServer 1.16
+--   Arena personas) is drawn like a player: its W-L (e.w / e.l) and "<pct>% WINS · LV <n>" on the plaque (n = clamp((w + l) / 3 + 5,
+--   5, 60), made up), the player text size, and it counts as a player in the intro (no "BOTS" card; its W-L adds to the team
+--   record). Switch: script attribute FillerPersonaUI (default true, read per draw; false = 1.6).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -50,6 +54,7 @@ VERSION = "1.3" -- v1.3 3D models wait until fully arrived
 VERSION = "1.4" -- v1.4 respawn picker mode
 VERSION = "1.5" -- v1.5 island picker mode
 VERSION = "1.6" -- v1.6 rank badge on the lineup plaques
+VERSION = "1.7" -- v1.7 filler bot personas drawn as players
 -- v1.6 (leaderboards, Kepu 2026-11-24 15:44 pick "Pre-game lineup"; badge look A, font 2 Builder Sans, mockup
 --   docs/mockups/rank_badge_fonts_v0.2.html): on the LINEUP plaques, a human slot whose player is on this server with a worldwide
 --   rank (RankBadge 1.0 rankOf) gets the rank badge just left of the name text ("YOU" on your own), 4 * TF px gap, centred
@@ -472,12 +477,19 @@ local function partText(id)
 	s = s:gsub("^Button:%s*", ""):gsub("^Passive:%s*", "")
 	return s
 end
+local function isPersona(e) -- v1.7
+	return type(e) == "table" and e.kind == "bot" and e.p == true and script:GetAttribute("FillerPersonaUI") ~= false
+end
 local function pct(w, l)
 	w, l = tonumber(w) or 0, tonumber(l) or 0
 	if w + l == 0 then return 0 end
 	return math.floor(100 * w / (w + l) + 0.5)
 end
 local function recordOf(e)
+	if isPersona(e) and e.w ~= nil and e.l ~= nil then -- v1.7
+		local lv = math.clamp(math.floor(((tonumber(e.w) or 0) + (tonumber(e.l) or 0)) / 3) + 5, 5, 60)
+		return ("%d-%d"):format(e.w, e.l), ("%d%% WINS · LV %d"):format(pct(e.w, e.l), lv)
+	end
 	if e.kind == "bot" then return (e.tier and string.upper(e.tier) or "") .. " BOT", "" end
 	if e.w == nil or e.l == nil then return "-", "LV " .. tostring(e.lv or "-") end
 	return ("%d-%d"):format(e.w, e.l), ("%d%% WINS · LV %s"):format(pct(e.w, e.l), tostring(e.lv or "-"))
@@ -575,7 +587,7 @@ local function setColumn(col, e, ringColor, me)
 	end
 	local rec, sub = recordOf(e)
 	col.wl.Text, col.pct.Text = rec, sub
-	col.wl.TextSize = (e.kind == "bot" and 11 or 16.5) * TF
+	col.wl.TextSize = ((e.kind == "bot" and not isPersona(e)) and 11 or 16.5) * TF -- v1.7: + persona
 	col.dn.Text, col.role.Text = nameOf(d), roleOf(d)
 	col.role.TextColor3 = modeColor()
 	local ready = e.kind == "bot" or e.ready == true
@@ -971,7 +983,7 @@ end
 local function teamRecord(list)
 	local w, l, any = 0, 0, false
 	for _, e in ipairs(list) do
-		if e.kind == "human" and e.w and e.l then w += e.w l += e.l any = true end
+		if (e.kind == "human" or isPersona(e)) and e.w and e.l then w += e.w l += e.l any = true end -- v1.7: + persona
 	end
 	return any and ("%dW %dL"):format(w, l) or nil
 end
@@ -1007,7 +1019,7 @@ local function drawIntro(t)
 		introColumns(theirs, C.red, nil)
 		coT.Text, coT.TextColor3 = "RED TEAM", C.red
 		local allBots = true
-		for _, e in ipairs(theirs) do if e.kind ~= "bot" then allBots = false end end
+		for _, e in ipairs(theirs) do if e.kind ~= "bot" or isPersona(e) then allBots = false end end -- v1.7: + persona
 		coN.Text = allBots and "BOTS" or "THE OPPONENTS"
 		coR.Text = allBots and botMix(theirs) or (teamRecord(theirs) or "")
 		counter.Text = "PLAYER INTROS"

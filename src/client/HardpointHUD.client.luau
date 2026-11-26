@@ -148,6 +148,9 @@
 --   line under the score on the banner beat and under the title on the board reads "ARENA" instead of "PRACTICE · <tier> BOTS".
 --   Bots matches still read "PRACTICE · <tier> BOTS", public Hardpoint "HARDPOINT". Switch: script attribute
 --   HardpointHUDArenaLabelEnabled (default true, read per frame; false = 1.11).
+-- v1.15 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T7, MDA-581, option A): a board row with p = true (HardpointServer 1.11
+--   persona bots) has no BOT tag, and its results XP cell shows "+<total>" from the MatchAwards 1.1 display lines like a player's.
+--   Switch: script attribute FillerPersonaUI (default true, read per draw; false = 1.14).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -174,6 +177,7 @@ VERSION = "1.13" -- v1.13 phone HUD v2 score strip
 --   "P1 IN 0:08 · GET READY"; status text / colour as the Status pill; "· NEXT P2 IN 0:20" added while NEXT shows), TextSize 12.
 --   All three show only with the compass. Off / PC: as 1.12.
 VERSION = "1.14" -- v1.14 victory titles beat
+VERSION = "1.15" -- v1.15 filler bot personas drawn as players
 -- v1.14 (victory titles, MDA-557, plan docs/plans/VICTORY_TITLES_v1.0.md Task 6; Kepu 2026-11-16 19:00 "Let's implement them"):
 --   the results length is ReplicatedStorage.Hardpoint HpResultsLen (HardpointServer 1.9; missing / 0 -> HardpointRules.RESULTS),
 --   and while HpTitles is set and HpTitlesLen > 0 the beat after the banner is "titles" for HpTitlesLen s: this HUD draws
@@ -470,7 +474,8 @@ local function drawBoard(mine, you, foe, title)
 			if r then
 				local me = r.id == "u" .. player.UserId
 				local nm = (me and "★ " or "") .. tostring(r.name)
-				if r.bot then nm = nm .. ' <font size="10" color="#8f99aa">BOT</font>' end
+				local persona = r.p == true and script:GetAttribute("FillerPersonaUI") ~= false -- v1.15
+				if r.bot and not persona then nm = nm .. ' <font size="10" color="#8f99aa">BOT</font>' end
 				cells[1].Text, cells[2].Text = nm, SHORT[r.species] or tostring(r.species or "")
 				cells[3].Text, cells[4].Text, cells[5].Text = tostring(r.k or 0), tostring(r.d or 0), mss(r.pt)
 				for _, c in ipairs(cells) do c.TextColor3 = me and YELLOW or Color3.new(1, 1, 1) end
@@ -849,7 +854,8 @@ local function drawEndBoard(mine, aw)
 			local cell = xpCells[t][i]
 			if r then
 				local a = aw and aw.rows and aw.rows[r.id]
-				cell.Text = (a and not r.bot) and ("+" .. tostring(a.total or 0)) or "—"
+				local persona = r.p == true and script:GetAttribute("FillerPersonaUI") ~= false -- v1.15
+				cell.Text = (a and (not r.bot or persona)) and ("+" .. tostring(a.total or 0)) or "—"
 				local tag = aw and ((r.id == aw.mvp and '<font size="11" color="#ffd25a">MVP</font> ')
 					or (r.id == aw.svp and '<font size="11" color="#c9d3e0">SVP</font> ')) or nil
 				if tag then bTables[t][i][1].Text = tag .. bTables[t][i][1].Text end
