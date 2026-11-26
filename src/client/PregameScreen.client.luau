@@ -55,6 +55,16 @@ VERSION = "1.4" -- v1.4 respawn picker mode
 VERSION = "1.5" -- v1.5 island picker mode
 VERSION = "1.6" -- v1.6 rank badge on the lineup plaques
 VERSION = "1.7" -- v1.7 filler bot personas drawn as players
+VERSION = "1.8" -- v1.8 coming soon + locked dinos
+-- v1.8 (Kepu 2026-11-26 08:06 "make dinos 40 skill points to unlock base or pay robux to unlock maxed out", 08:09 "for the t-rex have
+--   it be unselectable and unable to use. just slap a coming soon on it"; SpeciesServer 1.11, DinoUnlockServer 1.0): on the SELECT
+--   dino step a tile whose dino is coming soon (ReplicatedStorage DinoComingSoon) gets a dark cover "COMING SOON" (muted) and can't
+--   be picked (toast "COMING SOON"); a locked one (ReplicatedStorage DinoUnlockGate on, the player's ownership known and the dino
+--   not in OwnedDinos) gets "LOCKED" (yellow) and can be looked at: the main button reads "UNLOCK · 40 PTS" ->
+--   DinoUnlockRequest("points") (toasts "<DINO> UNLOCKED", "NEED 40 PTS · YOU HAVE n", "FINISH THE TUTORIAL FIRST", "TRY AGAIN"),
+--   and a third button "MAXED · R$149" (190 x 40, yellow text) -> DinoUnlockRequest("robux") (Roblox's purchase window). The row is
+--   620 wide. An OwnedDinos change redraws the screen; a DinoUnlockedAt change toasts "<DINO> UNLOCKED". Switch: script attribute
+--   PregameLocksEnabled (true, read per draw).
 -- v1.6 (leaderboards, Kepu 2026-11-24 15:44 pick "Pre-game lineup"; badge look A, font 2 Builder Sans, mockup
 --   docs/mockups/rank_badge_fonts_v0.2.html): on the LINEUP plaques, a human slot whose player is on this server with a worldwide
 --   rank (RankBadge 1.0 rankOf) gets the rank badge just left of the name text ("YOU" on your own), 4 * TF px gap, centred
@@ -621,6 +631,21 @@ local acts = new("Frame", {Name = "Acts", BackgroundTransparency = 1, AnchorPoin
 new("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), HorizontalAlignment = Enum.HorizontalAlignment.Center}, acts)
 local backBtn = button(acts, "BACK", false, {sz = UDim2.fromOffset(150, 40), name = "Back"})
 local goBtn = button(acts, "SELECT", true, {sz = UDim2.fromOffset(240, 40), name = "Go"})
+-- v1.8: dino locks (see the v1.8 note)
+local maxBtn = button(acts, "MAXED · R$149", false, {sz = UDim2.fromOffset(190, 40), name = "Max"})
+maxBtn.TextColor3 = C.yellow
+maxBtn.LayoutOrder = 3
+maxBtn.Visible = false
+acts.Size = UDim2.fromOffset(620, 40)
+local function csvHas(csv, id) return string.find("," .. tostring(csv or "") .. ",", "," .. tostring(id) .. ",", 1, true) ~= nil end
+local function lockOf(d)
+	if not d or script:GetAttribute("PregameLocksEnabled") == false then return nil end
+	if csvHas(ReplicatedStorage:GetAttribute("DinoComingSoon"), d) then return "soon" end
+	if ReplicatedStorage:GetAttribute("DinoUnlockGate") ~= true then return nil end
+	local ts, owned = player:GetAttribute("TutState"), tostring(player:GetAttribute("OwnedDinos") or "")
+	if ts == nil or ts == "wait" or owned == "" then return nil end
+	return (not csvHas(owned, d)) and "locked" or nil
+end
 local toast = text(S, {text = "", size = 9, anchor = Vector2.new(0.5, 1), pos = UDim2.new(0.5, 0, 1, -70), sz = UDim2.fromOffset(360, 22), z = 8})
 toast.BackgroundTransparency, toast.BackgroundColor3, toast.Visible = 0, Color3.fromRGB(15, 21, 29), false
 corner(toast, 5)
@@ -663,6 +688,10 @@ for gi, g in ipairs(ROLE_GROUPS) do
 		text(t, {text = nameOf(d), size = 7.2, anchor = Vector2.new(0, 1), pos = UDim2.new(0, 0, 1, -2), sz = UDim2.new(1, 0, 0, 11), z = 2})
 		local tag = text(t, {text = "", size = 5.5, color = C.blue, x = Enum.TextXAlignment.Left, pos = UDim2.fromOffset(4, 2), sz = UDim2.new(1, -8, 0, 8), z = 3})
 		tiles[d] = {b = t, s = s, tag = tag}
+		local cover = new("TextLabel", {Name = "Lock", BackgroundColor3 = Color3.fromRGB(8, 11, 16), BackgroundTransparency = 0.3, Text = "",
+			Font = LOUD, TextSize = 9, TextColor3 = C.yellow, Size = UDim2.fromScale(1, 1), ZIndex = 5, Visible = false}, t) -- v1.8
+		corner(cover, 6)
+		tiles[d].cover = cover
 	end
 end
 
@@ -860,6 +889,12 @@ local function drawSelect()
 		t.s.Color = dd == d and C.yellow or C.line
 		t.b.BackgroundColor3 = dd == d and Color3.fromRGB(42, 42, 28) or C.panel2
 		t.tag.Text = mateNamesOn(dd)
+		local lk = lockOf(dd) -- v1.8
+		if t.cover then
+			t.cover.Visible = lk ~= nil
+			t.cover.Text = lk == "soon" and "COMING\nSOON" or (lk == "locked" and "LOCKED" or "")
+			t.cover.TextColor3 = lk == "soon" and C.muted or C.yellow
+		end
 	end
 	-- showcase
 	cls.Text = d and ((Sheet and Sheet.SPECIES and Sheet.SPECIES[d] and string.upper(Sheet.SPECIES[d].class) or "") .. " · " .. roleOf(d)) or ""
@@ -882,6 +917,11 @@ local function drawSelect()
 	if parts then drawParts() end
 	backBtn.Text = parts and "CHANGE DINO" or "BACK"
 	goBtn.Text = parts and "CONFIRM LOADOUT" or (d and ("SELECT " .. nameOf(d)) or "SELECT")
+	do -- v1.8
+		local lk = (not parts) and lockOf(d) or nil
+		maxBtn.Visible = lk == "locked"
+		if lk == "locked" then goBtn.Text = "UNLOCK · 40 PTS" elseif lk == "soon" then goBtn.Text = "COMING SOON" end
+	end
 	-- the slide: parts step widens the dino and hides the roster
 	local ti = TweenInfo.new(0.42, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 	TweenService:Create(roster3, ti, {Position = UDim2.fromOffset(parts and -230 or 30, 122)}):Play()
@@ -893,6 +933,7 @@ end
 for d, t in pairs(tiles) do
 	t.b.Activated:Connect(function()
 		if sel.step ~= "dino" then return end
+		if lockOf(d) == "soon" then showToast("COMING SOON") return end -- v1.8
 		press("tile:" .. d)
 		sel.draft = d
 		drawSelect()
@@ -1088,9 +1129,39 @@ backBtn.Activated:Connect(function()
 		else setView("lineup") end
 	end
 end)
+maxBtn.Activated:Connect(function() -- v1.8
+	local d = sel.draft
+	if sel.step ~= "dino" or lockOf(d) ~= "locked" then return end
+	local r = ReplicatedStorage:FindFirstChild("DinoUnlockRequest")
+	if not r then showToast("TRY AGAIN") return end
+	press("buy:" .. d)
+	local ok, res = pcall(function() return r:InvokeServer("robux", d) end)
+	if not (ok and res == "prompted") then showToast(ok and res == "owned" and "ALREADY YOURS" or "TRY AGAIN") end
+end)
+player:GetAttributeChangedSignal("OwnedDinos"):Connect(function() if view == "select" then drawSelect() end end) -- v1.8
+player:GetAttributeChangedSignal("DinoUnlockedAt"):Connect(function() -- v1.8
+	local d = player:GetAttribute("DinoUnlocked")
+	if type(d) == "string" and view == "select" then showToast(nameOf(d) .. " UNLOCKED") end
+end)
 goBtn.Activated:Connect(function()
 	if sel.step == "dino" then
 		if not sel.draft then return end
+		do -- v1.8: coming soon / locked
+			local lk = lockOf(sel.draft)
+			if lk == "soon" then showToast("COMING SOON") return end
+			if lk == "locked" then
+				local r = ReplicatedStorage:FindFirstChild("DinoUnlockRequest")
+				if not r then showToast("TRY AGAIN") return end
+				press("unlock:" .. sel.draft)
+				local ok, res, have = pcall(function() return r:InvokeServer("points", sel.draft) end)
+				res = ok and res or "failed"
+				if res == "ok" then showToast(nameOf(sel.draft) .. " UNLOCKED")
+				elseif res == "notEnough" then showToast("NEED 40 PTS · YOU HAVE " .. tostring(have or 0))
+				else showToast(({notReady = "FINISH THE TUTORIAL FIRST", notLoaded = "LOADING, TRY AGAIN", owned = "ALREADY YOURS"})[res] or "TRY AGAIN") end
+				task.delay(0.4, function() if view == "select" then drawSelect() end end)
+				return
+			end
+		end
 		press("pick:" .. sel.draft)
 		if sel.draft ~= myDino() then
 			if respawnMode() then respawnFire("dino", sel.draft) -- v1.4

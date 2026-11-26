@@ -178,6 +178,11 @@ VERSION = "1.26" -- v1.26 Arena record block
 VERSION = "1.27" -- v1.27 first-time flow: hidden during it + TUTORIAL
 VERSION = "1.28" -- v1.28 hero layout (mockup A)
 VERSION = "1.29" -- v1.29 SHOP tile
+VERSION = "1.30" -- v1.30 skip coming-soon / locked dinos
+-- v1.30 (Kepu 2026-11-26 08:09 "for the t-rex have it be unselectable", 08:06 dino unlocks; SpeciesServer 1.11): the ◀ ▶ dino switch
+--   skips a dino that is coming soon (ReplicatedStorage DinoComingSoon) or locked (DinoUnlockGate on, ownership known, not in the
+--   player's OwnedDinos); unlocking is in the SELECT screen (PregameScreen 1.8). Switch: script attribute MainMenuSkipLockedEnabled
+--   (true, read per press).
 -- v1.29 (shop, plan docs/plans/SHOP_v1.0.md, mockup docs/mockups/main_menu_shop_v0.1.html option A; Kepu 2026-11-24 19:12 "build
 --   the shop knowing other tabs will be added", pick "A · Featured + rows"): with the hero layout, an orange SHOP tile (ORANGE, dark
 --   text, "R$" over "SHOP") in the left rail under LAB, the same width, height MainMenuHeroShopH (12, % of height, min 44 px);
@@ -1606,10 +1611,23 @@ stage.Activated:Connect(function()
 	drawStage()
 	rebuildPreview()
 end)
+local function menuLocked(id) -- v1.30
+	if script:GetAttribute("MainMenuSkipLockedEnabled") == false then return false end
+	local function has(csv) return string.find("," .. tostring(csv or "") .. ",", "," .. tostring(id) .. ",", 1, true) ~= nil end
+	if has(ReplicatedStorage:GetAttribute("DinoComingSoon")) then return true end
+	if ReplicatedStorage:GetAttribute("DinoUnlockGate") ~= true then return false end
+	local ts, owned = player:GetAttribute("TutState"), tostring(player:GetAttribute("OwnedDinos") or "")
+	if ts == nil or ts == "wait" or owned == "" then return false end
+	return not has(owned)
+end
 local function switchDino(step)
 	if os.clock() < switchUntil or switchingTo ~= nil then return end
 	local i = dinoIndex()
 	local j = ((i - 1 + step) % #DINOS) + 1
+	for _ = 1, #DINOS do -- v1.30: skip coming-soon / locked dinos
+		if not menuLocked(DINOS[j].id) then break end
+		j = ((j - 1 + step) % #DINOS) + 1
+	end
 	if j == i then return end
 	press(step < 0 and "prev" or "next")
 	switchingTo = DINOS[j].id
