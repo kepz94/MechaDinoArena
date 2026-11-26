@@ -94,3 +94,10 @@ granted).
   the mecha part but try to do an action shot with it" -> src/mecha_raptor_action_frame.jpg: a real jump, the Shock Cannon fired
   at the top, every body part frozen at that instant (client snapshot), the real ShockBall (shell, arcs) frozen just past the
   barrel. Only the dino gets the sticker outline; the ball gets a cyan glow. Restored after: Play stopped, switches back.
+- 11:53 Kepu: "how about shots of them facing the camera. cause these look ass"; 11:54 cooked emote + other poses (tried: Cooked
+  frames at 1.0 / 1.6 / 2.5 s); 11:57 "FORGET THE EMOTE LETS GET A SHOCK CANON FROM THIS ANGLE"; 11:58 "I DIDNT TELL YOU TO LEAP. I JUST
+  SAID TO SHOOT THE CANON. GET SHOTS OF BOTH ANYWAYS". Re-shot from a 3/4 front camera: src/plain_front.jpg (classic Raptor),
+  src/mecha_shoot_stand.jpg (Lava Raptor standing, Shock Cannon fired, ball frozen 7 studs past the barrel) and
+  src/mecha_shoot_leap.jpg (the same, at the top of a jump). Parts on: Shock Cannon, Thrusters, Adrenaline, Energy Shield, Blade
+  claws (slot 4 set to Thrusters in Play). Outputs: thumb_dino_to_mecha_stand / _leap.jpg, icon_dino_to_mecha_stand / _leap_1024 /
+  _512.png. Restored after: Play stopped, switches back.
