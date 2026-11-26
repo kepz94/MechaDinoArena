@@ -131,3 +131,24 @@ the HUD is hidden). Account changes during the shoot: SkillSlot1 set to screech 
 species switched to Herrera for the glide, then back to Raptor; Raptor skin stays lava. Restored after: Play stopped,
 ModeTestPractice nil, SkillTestMaxAllEnabled false (checked), quality Automatic, Output + Asset Manager side by side again,
 window snapped left. Game Bar left at 60 fps / High.
+
+## Trailer v0.6 cut (2026-11-25 18:47)
+
+Kepu 18:30 / 18:32: cut the Teno jumping on the Dilo; the Lab should equip the obvious parts (Shock Cannon, Adrenaline,
+Thrusters on the Raptor); rework the Herrera jump transitions; the cannon shot had a second Pachy walking through it, went by
+too fast, and did not follow the ball to the Pachy; the stare-down could be quicker. Cut: 29.3 s, silent,
+C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.6.mp4 (not in the repo). New sources: 18-33-14 (Lab), 18-39-24 (cannon,
+glide; file time = Studio clock - 18:39:19.8). Order: portal, battle wide, battle medium, Lab (base green Raptor: Adrenaline
+Injector, Shock Cannon, Thrusters, each card highlighted then the part on the dino; uicam.py on a 30 fps resample),
+Herrera on the summit leaps and the camera swings into the sun in one move (offsets blended over 1.3 s), white flash, over
+the battle (v0.5 clip), pull-out over the battle, cannon: 0.7 s side-rear shot with the cannon on the shoulder, ball ride at
+0.35x (minterpolate to 30 fps) all the way into the Pachy, 0.85 s of the stun at normal speed; Shop, GG (v0.5), logo
+(cross-blur from the GG frame, no black frame). Cannon set: target Pachy 80 studs away on the meadow at z 268, a scan for
+any other humanoid model in the lane before the take, practice bots parked. Shock Cannon recharge is longer than 9 s, so
+takes 9 s apart were refused; only every other take fired.
+Filming-only (Play session): practice match bots cloned into ServerStorage.TrailerBots across 3 rerolls (13 templates), the
+crowd director, FX watcher copies, HUD hidden by reparenting ScreenGuis, SkillServer SkillTestMaxAllEnabled true (for the
+Herrera glider slot). Account changes during the shoot: Raptor skin set to classic for the Lab then back to lava; Lab
+equipped adrenaline / screech / thrusters, all three Raptor slots cleared again after; species Herrera for the glide, back
+to Raptor. Restored after: SkillTestMaxAllEnabled false, Play stopped, ModeTestPractice nil, quality Automatic, Output +
+Asset Manager back, window snapped left.
