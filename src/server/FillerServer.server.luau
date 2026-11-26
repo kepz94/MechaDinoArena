@@ -35,6 +35,8 @@
 --   FillerLeaveHideDist (120), FillerTestReal (nil; Studio only).
 -- Diagnostics: FillerServerVersion, FillerState ("waiting" / "notHub" / "off" / "on" / "noModules"), FillerBots, FillerWanted,
 --   FillerReal, FillerLast, FillerMs (think time per tick), FillerBrainError, FillerSpawned, FillerLeft.
+-- v1.1 (found in the T5 Studio check 2026-11-25: a bot's tag never came back after it emoted): EmoteId is cleared when the emote's
+--   length is over (as EmoteServer does for players; IslandTags 1.5 hides a tag while EmoteId is set).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -43,6 +45,7 @@ local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 EmoteId cleared after the emote
 script:SetAttribute("FillerServerVersion", VERSION)
 local DEFAULTS = {FillerEnabled = true, FillerFillTo = 8, FillerTick = 0.1, FillerLeaveViaPortal = true,
 	FillerRoamCentre = Vector3.new(640, 0, 640), FillerRoamRadius = 200, FillerPathBudget = 3, FillerBody = 2,
@@ -329,8 +332,10 @@ local function emoteNow(rec, id)
 	m:SetAttribute("EmoteDuration", dur)
 	m:SetAttribute("EmoteStartedAt", now())
 	m:SetAttribute("EmoteId", id)
+	local at = m:GetAttribute("EmoteStartedAt")
 	task.delay(dur, function()
 		if rec.model == m then rec.busy = false end
+		if m.Parent and m:GetAttribute("EmoteStartedAt") == at then m:SetAttribute("EmoteId", nil) end -- v1.1
 	end)
 	rec.lastEmote = os.clock()
 end

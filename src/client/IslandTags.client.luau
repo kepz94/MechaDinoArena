@@ -47,6 +47,11 @@
 -- v1.5 (Kepu 2026-11-25 11:56 "when I do an emote have it hide the name plate and records so I can properly see the emote"): a player
 --   whose character has EmoteId (EmoteServer 1.0, set while the emote plays, cleared when it ends or is cancelled) gets no tag on
 --   any screen; it comes back the frame EmoteId clears. Switch: script attribute IslandTagsHideOnEmote (default true, read per frame).
+-- v1.6 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T5, MDA-578, option A): models in Workspace.DinoIsland.Bots with
+--   FillerPersona = true (FillerServer 1.0 bots) get a tag like a player's: DisplayName upper case and the record FillerW / FillerL
+--   (made up, always "ready"), no rank badge; hidden while that bot emotes (1.5) or once its DummyHealth is 0; same distance and
+--   count rules (nearest IslandTagsMaxCount over players and bots). Switch: script attribute IslandTagsBotsEnabled (default
+--   true, read per frame; false = 1.5).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -58,6 +63,7 @@ VERSION = "1.2" -- v1.2 rank badge
 VERSION = "1.3" -- v1.3 no ratio bar
 VERSION = "1.4" -- v1.4 one line, centred
 VERSION = "1.5" -- v1.5 hidden while emoting
+VERSION = "1.6" -- v1.6 filler bots tagged
 local ORANGE = Color3.fromRGB(255, 155, 46)
 local FONT = Enum.Font.FredokaOne
 local DEFAULTS = {IslandTagsEnabled = true, IslandTagsMax = 80, IslandTagsMaxCount = 12,
@@ -206,6 +212,36 @@ local function halfHeight(model)
 	return h
 end
 
+-- v1.6: filler bots get a tag like a player (see the header)
+local botStands = {} -- [model] = stand-in "player" for tagFor / the drawing code
+local function botStand(m)
+	local s = botStands[m]
+	if s then return s end
+	s = {UserId = "b" .. m.Name, Character = m}
+	s.DisplayName = tostring(m:GetAttribute("DisplayName") or m.Name)
+	function s:GetAttribute(k)
+		if k == "ArenaRecordReady" then return true end
+		if k == "ArenaW" then return tonumber(m:GetAttribute("FillerW")) or 0 end
+		if k == "ArenaL" then return tonumber(m:GetAttribute("FillerL")) or 0 end
+		return nil
+	end
+	botStands[m] = s
+	return s
+end
+task.spawn(function()
+	local isl = workspace:WaitForChild("DinoIsland", 1e9)
+	local f = isl and isl:WaitForChild("Bots", 1e9)
+	if not f then return end
+	f.ChildRemoved:Connect(function(m)
+		local s = botStands[m]
+		if s then
+			local t = tags[s]
+			if t then t.frame:Destroy() tags[s] = nil end
+			botStands[m] = nil
+		end
+	end)
+end)
+
 Players.PlayerRemoving:Connect(function(p)
 	local t = tags[p]
 	if t then t.frame:Destroy() tags[p] = nil end
@@ -235,6 +271,20 @@ RunService.RenderStepped:Connect(function()
 		if hrp and c.Parent and p:GetAttribute("InMenu") ~= true and not emoting then
 			local d = (hrp.Position - from).Magnitude
 			if d <= maxD then table.insert(list, {p = p, c = c, d = d}) end
+		end
+	end
+	if script:GetAttribute("IslandTagsBotsEnabled") ~= false then -- v1.6
+		local isl = workspace:FindFirstChild("DinoIsland")
+		local bf = isl and isl:FindFirstChild("Bots")
+		if bf then
+			for _, m in ipairs(bf:GetChildren()) do
+				local hrp = m:IsA("Model") and m:GetAttribute("FillerPersona") == true and m:FindFirstChild("HumanoidRootPart")
+				local emoting = hideEmote and m:GetAttribute("EmoteId") ~= nil
+				if hrp and (tonumber(m:GetAttribute("DummyHealth")) or 1) > 0 and not emoting then
+					local d = (hrp.Position - from).Magnitude
+					if d <= maxD then table.insert(list, {p = botStand(m), c = m, d = d}) end
+				end
+			end
 		end
 	end
 	table.sort(list, function(a, b) return a.d < b.d end)
