@@ -1,0 +1,375 @@
+<title>Welcome and Special Moves</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Montserrat:wght@700;800;900&display=swap">
+<style>
+/* Welcome + Special Moves v0.1 (Kepu 2026-11-26 walkthrough feedback). Tokens = dino_showcase_v0.4 (the game's tutorial look).
+   Move copy = SkillTree PATHS[id].steps[1] / Tutorial SC_INFO, read 2026-11-26; short tags are NEW copy for approval.
+   Single dark look on purpose: these are game screens. */
+:root {
+  --bg: #0b0f16; --glow: #26324a; --card: #151d2b; --line: #2a3446; --yellow: #ffc832; --yellowDark: #b58a12; --ink: #1b1406;
+  --white: #fff; --text: #dfe6f0; --muted: #8a95a8; --green: #46e08a; --cyan: #7fe9ff; --pink: #ff6b84; --page: #07090e;
+  --grass: #2f5a2c; --sky: #16324a; --trunk: #6b4a2b; --leaf: #2f8a3a;
+  color-scheme: dark;
+}
+body { background: var(--page); color: var(--text); font-family: Montserrat, "Segoe UI", system-ui, sans-serif; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 20px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
+h1 { font: 700 22px/1.2 Fredoka, system-ui, sans-serif; margin: 0; color: #fff; text-wrap: balance; }
+h2 { font: 700 18px Fredoka, system-ui, sans-serif; margin: 0; color: #fff; }
+.sub { color: var(--muted); font-size: 13px; margin: 4px 0 0; max-width: 75ch; line-height: 1.55; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tabs button, .ctl { font: 800 12px Montserrat, system-ui, sans-serif; letter-spacing: .06em; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 44px; cursor: pointer; }
+.tabs button[aria-pressed="true"] { background: var(--yellow); color: var(--ink); border-color: var(--yellow); }
+.note { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--yellow); border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.55; }
+.note b { color: #fff; }
+.note.warn { border-left-color: var(--pink); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* phone frame (iPhone 17 Pro landscape 750x381, as the Studio emulator) */
+.phone { position: relative; width: 100%; aspect-ratio: 750 / 381; container-type: inline-size; border-radius: 3.2cqw; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 55%, var(--glow) 0%, var(--bg) 62%); border: 6px solid #1a1f29; box-shadow: 0 10px 40px #0008; }
+.scr { position: absolute; inset: 0; }
+.scr[hidden] { display: none !important; }
+.fade { animation: fade .35s ease both; }
+@keyframes fade { from { opacity: 0; transform: scale(1.02) } to { opacity: 1; transform: none } }
+.btn { position: absolute; font: 700 2.1cqw Fredoka, sans-serif; color: var(--ink); background: var(--yellow); border: 0; border-bottom: .45cqw solid var(--yellowDark);
+  border-radius: 1cqw; padding: .9cqw 3.4cqw; cursor: pointer; z-index: 5; min-height: 5.9cqw; }
+.brand { font: 700 1.3cqw Fredoka, sans-serif; color: var(--yellow); letter-spacing: .25em; }
+.chip { display: inline-block; font: 900 1cqw Montserrat, sans-serif; letter-spacing: .1em; color: var(--ink); padding: .25cqw .7cqw; border-radius: .4cqw; }
+.badge { display: inline-block; font: 900 .95cqw Montserrat, sans-serif; letter-spacing: .08em; color: var(--ink); background: var(--yellow); border-radius: .4cqw; padding: .25cqw .6cqw; white-space: nowrap; min-width: 6.4cqw; text-align: center; }
+.badge.c { background: var(--cyan); } .badge.g { background: var(--green); } .badge.p { background: var(--pink); }
+.topbar { position: absolute; left: 1.4cqw; top: 1.2cqw; display: flex; gap: .8cqw; }
+.topbar i { width: 4.4cqw; height: 4.4cqw; border-radius: 1cqw; background: #0007; display: block; }
+
+/* dino block icon */
+.dino { position: relative; width: 100%; aspect-ratio: 1.5; }
+.dino b { position: absolute; border-radius: .3cqw; }
+
+/* welcome A */
+.wa-title { position: absolute; left: 0; right: 0; top: 8cqw; text-align: center; }
+.wa-title .w { font: 900 1.6cqw Montserrat, sans-serif; letter-spacing: .4em; color: var(--cyan); }
+.wa-title .t { font: 700 6.4cqw/1 Fredoka, sans-serif; color: #fff; text-shadow: 0 .5cqw 0 #000a; margin-top: .6cqw; }
+.wa-title .t span { color: var(--yellow); }
+.pillars { position: absolute; left: 50%; transform: translateX(-50%); top: 22.5cqw; display: grid; grid-template-columns: repeat(3, 19cqw); gap: 1.6cqw; }
+.pill { background: var(--card); border: .25cqw solid var(--line); border-radius: 1.4cqw; padding: 1.4cqw 1.4cqw 1.2cqw; text-align: center; }
+.pill .ic { font: 700 3.2cqw Fredoka, sans-serif; color: var(--yellow); line-height: 1; }
+.pill .n { font: 700 1.9cqw Fredoka, sans-serif; color: #fff; margin-top: .6cqw; }
+.pill .l { font: 800 1.15cqw/1.35 Montserrat, sans-serif; color: var(--muted); margin-top: .4cqw; }
+.pill { opacity: 0; animation: deal .45s ease forwards; }
+.pill:nth-child(2) { animation-delay: .12s } .pill:nth-child(3) { animation-delay: .24s }
+@keyframes deal { from { opacity: 0; transform: translateY(2cqw) } to { opacity: 1; transform: none } }
+
+/* welcome B: lineup */
+.lineup { position: absolute; left: 4cqw; right: 4cqw; bottom: 9cqw; display: grid; grid-template-columns: repeat(7, 1fr); gap: 1.2cqw; align-items: end; }
+.lineup .d { filter: brightness(0); transition: filter .5s; }
+.lineup.lit .d { filter: none; }
+.lineup .d:nth-child(2) { transition-delay: .1s } .lineup .d:nth-child(3) { transition-delay: .2s } .lineup .d:nth-child(4) { transition-delay: .3s }
+.lineup .d:nth-child(5) { transition-delay: .4s } .lineup .d:nth-child(6) { transition-delay: .5s } .lineup .d:nth-child(7) { transition-delay: .6s }
+.wb-title { position: absolute; left: 0; right: 0; top: 7cqw; text-align: center; }
+.wb-title .t { font: 700 5.6cqw/1 Fredoka, sans-serif; color: #fff; }
+.wb-title .s { font: 900 1.4cqw Montserrat, sans-serif; letter-spacing: .14em; color: var(--text); margin-top: 1.2cqw; }
+.floor { position: absolute; left: 0; right: 0; bottom: 0; height: 10cqw; background: linear-gradient(#0000, #1d2638); }
+
+/* roster */
+.r-head { position: absolute; left: 3cqw; top: 6.6cqw; }
+.r-head .t { font: 700 3.1cqw Fredoka, sans-serif; color: #fff; }
+.r-head .s { font: 900 1.2cqw Montserrat, sans-serif; color: var(--text); letter-spacing: .1em; margin-top: .3cqw; }
+.r-list { position: absolute; left: 3cqw; top: 14.6cqw; width: 22cqw; display: grid; grid-template-columns: repeat(3, 1fr); gap: .8cqw; }
+.r-tile { background: var(--card); border: .25cqw solid var(--line); border-radius: 1cqw; padding: .5cqw; cursor: pointer; text-align: center; min-height: 6cqw; }
+.r-tile[aria-pressed="true"] { border-color: var(--yellow); }
+.r-tile .n { font: 900 .95cqw Montserrat, sans-serif; color: #fff; letter-spacing: .05em; margin-top: .3cqw; }
+.r-mid { position: absolute; left: 27cqw; top: 13cqw; width: 26cqw; }
+.r-mid .base { height: 3cqw; margin-top: -1cqw; border-radius: 50%; border: .35cqw solid var(--yellow); background: #0004; }
+.r-side { position: absolute; right: 2.4cqw; top: 3cqw; bottom: 2.4cqw; width: 42cqw; background: #0d1320ee; border: .25cqw solid var(--line); border-radius: 1.4cqw; padding: 1.4cqw 1.6cqw; overflow: hidden; display: flex; flex-direction: column; gap: .7cqw; }
+.r-side .nm { font: 700 3cqw/1 Fredoka, sans-serif; color: #fff; }
+.r-side h4 { margin: .6cqw 0 0; font: 900 1.05cqw Montserrat, sans-serif; letter-spacing: .14em; color: var(--muted); }
+.mv { display: grid; grid-template-columns: auto 1fr; gap: .9cqw; align-items: center; background: var(--card); border-radius: .8cqw; padding: .7cqw .9cqw; }
+.mv .n { font: 800 1.35cqw Montserrat, sans-serif; color: #fff; }
+.mv .l { font: 700 1.1cqw/1.35 Montserrat, sans-serif; color: var(--text); }
+.mv.new { outline: .2cqw solid var(--cyan); }
+.tag-new { font: 900 .8cqw Montserrat, sans-serif; color: var(--cyan); letter-spacing: .12em; margin-left: .5cqw; }
+
+/* training / island scenes */
+.sky { position: absolute; inset: 0; background: linear-gradient(var(--sky), #2b5a78 52%, var(--grass) 52%, #1f3f1e); }
+.tree { position: absolute; bottom: 22cqw; width: 4cqw; }
+.tree .trunk { position: absolute; left: 1cqw; bottom: 0; width: 2cqw; height: 17cqw; background: var(--trunk); border-radius: .4cqw; }
+.tree .top { position: absolute; left: -4cqw; bottom: 15cqw; width: 12cqw; height: 6cqw; background: var(--leaf); border-radius: 50%; }
+.me { position: absolute; width: 7cqw; transition: left .6s ease, bottom .6s ease; }
+.bot { position: absolute; width: 8cqw; }
+.obj { position: absolute; left: 50%; transform: translateX(-50%); top: 1.2cqw; width: 40cqw; background: #0d1320ee; border: .25cqw solid var(--line); border-radius: 1.2cqw; padding: 1cqw 1.4cqw; }
+.obj .st { font: 900 .95cqw Montserrat, sans-serif; color: var(--yellow); letter-spacing: .14em; }
+.obj .g { font: 700 1.8cqw Fredoka, sans-serif; color: #fff; margin: .2cqw 0 .5cqw; }
+.obj ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35cqw; }
+.obj li { font: 800 1.15cqw Montserrat, sans-serif; color: var(--muted); display: flex; gap: .7cqw; align-items: center; }
+.obj li.on { color: #fff; } .obj li.done { color: var(--green); }
+.obj li .k { width: 1.8cqw; height: 1.8cqw; border-radius: 50%; border: .2cqw solid currentColor; display: grid; place-items: center; font-size: 1cqw; flex: none; }
+.tbtn { position: absolute; border-radius: 50%; background: #0008; border: .3cqw solid #fff6; display: grid; place-items: center; font: 900 1.1cqw Montserrat, sans-serif; color: #fff; }
+.ring { position: absolute; border-radius: 50%; border: .5cqw solid var(--yellow); animation: pulse 1s ease-in-out infinite; pointer-events: none; }
+@keyframes pulse { 50% { transform: scale(1.15); opacity: .55 } }
+.call { position: absolute; background: var(--yellow); color: var(--ink); font: 900 1.2cqw Montserrat, sans-serif; padding: .6cqw 1cqw; border-radius: .7cqw; white-space: nowrap; }
+.toast { position: absolute; left: 50%; transform: translateX(-50%); background: #0d1320ee; border: .3cqw solid var(--cyan); border-radius: 1cqw; padding: .9cqw 1.6cqw; display: flex; gap: 1cqw; align-items: center; }
+.toast .t { font: 800 1.5cqw Montserrat, sans-serif; color: #fff; }
+.stick { position: absolute; left: 6cqw; bottom: 5cqw; width: 11cqw; height: 11cqw; border-radius: 50%; background: #0005; border: .3cqw solid #fff4; }
+
+/* audit table */
+.tw { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+th, td { text-align: left; padding: 9px 11px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 900 11px Montserrat, sans-serif; letter-spacing: .1em; color: var(--muted); background: var(--card); }
+td.d { font: 700 14px Fredoka, sans-serif; color: #fff; }
+.y { color: var(--green); font-weight: 800; } .n { color: var(--pink); font-weight: 800; } .h { color: var(--yellow); font-weight: 800; }
+@media (max-width: 560px) { .tabs button { flex: 1 1 45%; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand" style="font-size:12px">MECHA DINO ARENA · MOCKUP v0.1 · 2026-11-26</div>
+    <h1>Welcome screen, roster screen and special moves</h1>
+    <p class="sub">From your first-time walkthrough: nothing explained that the Herrera's wings work on JUMP, or that it climbs trees and drop-attacks from them, and the opening could start with a real welcome before the roster. Pick one welcome option and one special-moves option. Everything is drawn on the emulated iPhone 17 Pro screen.</p>
+  </header>
+
+  <section style="display:grid;gap:10px">
+    <h2>1 · Welcome, then the roster</h2>
+    <div class="tabs" id="wTabs">
+      <button aria-pressed="true" data-w="A">A · TITLE CARD</button>
+      <button aria-pressed="false" data-w="B">B · DINO LINEUP</button>
+    </div>
+    <div class="phone" id="wPhone">
+      <!-- welcome A -->
+      <div class="scr fade" id="wA">
+        <div class="topbar"><i></i><i></i></div>
+        <div class="wa-title"><div class="w">WELCOME TO</div><div class="t">MECHA <span>DINO</span> ARENA</div></div>
+        <div class="pillars">
+          <div class="pill"><div class="ic">⚔</div><div class="n">FIGHT</div><div class="l">Squad battles on the island</div></div>
+          <div class="pill"><div class="ic">⚙</div><div class="n">UPGRADE</div><div class="l">Mecha parts and skill points</div></div>
+          <div class="pill"><div class="ic">★</div><div class="n">COLLECT</div><div class="l">7 dinos, skins, emotes, trails</div></div>
+        </div>
+        <button class="btn go" style="left:50%;transform:translateX(-50%);bottom:3.4cqw">LET'S GO</button>
+      </div>
+      <!-- welcome B -->
+      <div class="scr fade" id="wB" hidden>
+        <div class="topbar"><i></i><i></i></div>
+        <div class="wb-title"><div class="brand">WELCOME TO</div><div class="t">MECHA DINO ARENA</div><div class="s">7 DINOS · MECHA PARTS · ONE ISLAND</div></div>
+        <div class="floor"></div>
+        <div class="lineup" id="lineup"></div>
+        <button class="btn go" style="left:50%;transform:translateX(-50%);bottom:1.6cqw">MEET THE ROSTER</button>
+      </div>
+      <!-- roster -->
+      <div class="scr fade" id="wR" hidden>
+        <div class="topbar"><i></i><i></i></div>
+        <div class="r-head"><div class="t">MEET THE ROSTER</div><div class="s">1 OF THESE 7 IS YOURS FREE</div></div>
+        <div class="r-list" id="rList"></div>
+        <div class="r-mid"><div class="dino" id="rBig"></div><div class="base"></div></div>
+        <div class="r-side" id="rSide"></div>
+        <button class="btn" id="toEgg" style="left:40cqw;transform:translateX(-50%);bottom:2.4cqw">NEXT</button>
+      </div>
+      <!-- egg (unchanged) -->
+      <div class="scr fade" id="wE" hidden>
+        <div style="position:absolute;inset:0;display:grid;place-items:center;text-align:center">
+          <div><div class="brand">UNCHANGED</div><div style="font:700 3.4cqw Fredoka,sans-serif;color:#fff;margin-top:1cqw">INCUBATOR EGG</div>
+          <div style="font:800 1.3cqw Montserrat,sans-serif;color:var(--muted);margin-top:.6cqw">Tutorial 1.2 hold-to-hatch, as live</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="row"><button class="ctl" id="wRestart">RESTART FLOW</button><span class="sub" style="margin:0">Tap the yellow buttons on the screen. Tap a roster tile to switch dino.</span></div>
+    <div class="note"><b>A · Title card.</b> One clear "what is this game" moment: 3 tiles say what you do (fight, upgrade, collect), then the roster. Cheap, reads instantly on a phone. Trade-off: a static screen, no dinos on it.<br>
+    <b>B · Dino lineup.</b> The 7 dinos stand in a row in black, then light up one by one under the title. More hype and it previews the roster. Trade-off: the 7 turning 3D models cost more on low-end phones (the roster after it already draws them).<br>
+    <b>Both:</b> the roster is today's showcase (Tutorial 1.5) retitled "MEET THE ROSTER", plus a new <b>SPECIAL MOVES</b> list per dino (cyan outline). Recommended: <b>A</b>.</div>
+  </section>
+
+  <section style="display:grid;gap:10px">
+    <h2>2 · Teaching the special moves</h2>
+    <div class="tabs" id="mTabs">
+      <button aria-pressed="true" data-m="A">A · TRAINING LESSON</button>
+      <button aria-pressed="false" data-m="B">B · REVEAL CARD</button>
+      <button aria-pressed="false" data-m="C">C · ISLAND HINTS</button>
+    </div>
+    <div class="phone" id="mPhone">
+      <!-- A: training lesson -->
+      <div class="scr" id="mA">
+        <div class="sky"></div>
+        <div class="tree" style="left:12cqw"><div class="trunk"></div><div class="top"></div></div>
+        <div class="bot dino" id="mBot" style="left:52cqw;bottom:21cqw"></div>
+        <div class="me dino" id="mMe" style="left:26cqw;bottom:21cqw"></div>
+        <div class="obj">
+          <div class="st">STEP 2/6 · SPECIAL MOVES</div>
+          <div class="g" id="mGoal">Walk into the tree.</div>
+          <ul id="mList"></ul>
+        </div>
+        <div class="stick"></div>
+        <div class="tbtn" id="bAtk" style="right:5cqw;bottom:6cqw;width:9cqw;height:9cqw">SLASH</div>
+        <div class="tbtn" id="bJump" style="right:16cqw;bottom:3cqw;width:7cqw;height:7cqw">JUMP</div>
+        <div class="ring" id="mRing"></div>
+        <div class="call" id="mCall"></div>
+      </div>
+      <!-- B: reveal card -->
+      <div class="scr" id="mB" hidden>
+        <div class="topbar"><i></i><i></i></div>
+        <div class="r-mid" style="left:6cqw;top:9cqw;width:34cqw"><div class="dino" id="bBig"></div><div class="base" style="border-color:var(--cyan)"></div></div>
+        <div class="r-side" style="width:50cqw">
+          <div class="brand">FREE DINO UNLOCKED</div>
+          <div class="nm">HERRERA</div>
+          <div><span class="chip" style="background:var(--pink)">FIGHTER</span></div>
+          <h4>MAIN ATTACK</h4>
+          <div class="mv"><span class="badge">TAP</span><div><div class="n">Dash Slash</div><div class="l">Dash through it.</div></div></div>
+          <h4>SPECIAL MOVES <span class="tag-new">NEW</span></h4>
+          <div id="bMoves" style="display:grid;gap:.6cqw"></div>
+        </div>
+        <button class="btn" style="left:23cqw;transform:translateX(-50%);bottom:2.4cqw">NEXT</button>
+      </div>
+      <!-- C: island hints -->
+      <div class="scr" id="mC" hidden>
+        <div class="sky"></div>
+        <div class="tree" style="left:44cqw"><div class="trunk"></div><div class="top"></div></div>
+        <div class="tree" style="left:70cqw"><div class="trunk"></div><div class="top"></div></div>
+        <div class="me dino" id="cMe" style="left:20cqw;bottom:21cqw"></div>
+        <div class="toast" id="cToast" style="top:4cqw"><span class="badge c">TREE</span><span class="t" id="cText">Walk into a tree to climb it</span></div>
+        <div class="stick"></div>
+        <div class="tbtn" style="right:5cqw;bottom:6cqw;width:9cqw;height:9cqw">SLASH</div>
+        <div class="tbtn" style="right:16cqw;bottom:3cqw;width:7cqw;height:7cqw">JUMP</div>
+      </div>
+    </div>
+    <div class="row"><button class="ctl" id="mStep">DO THE MOVE ▶</button><button class="ctl" id="mReset">RESET</button><span class="sub" style="margin:0" id="mHint">Plays the next move on the screen.</span></div>
+    <div class="note"><b>A · Training lesson.</b> A new tutorial step after the main attack: the dino you rolled does each special move once on the training pad (Herrera: climb the tree, drop on the bot, glide). Ring + finger + callout on the real button, like the main attack lesson. You remember it because you did it. Trade-off: biggest build: the Herrera's lane needs a climbable tree (today trees exist only on the island; ClimbTest reads Island.Trees), and each dino needs its own checks.<br>
+    <b>B · Reveal card.</b> The "IT HATCHED" panel gets a SPECIAL MOVES list under MAIN ATTACK (and the roster shows the same list). No new gameplay code. Trade-off: read once, easy to skip.<br>
+    <b>C · Island hints.</b> On the island, the first time it matters: near a tree as a Herrera "Walk into a tree to climb it", then on the trunk "SLASH: drop on dinos below", first time in the air with wings "Hold JUMP to glide". Each hint shows a few times, then stops. Trade-off: teaches in the moment but needs a saved "seen" flag per hint (MDA_Settings_v1) and covers only what you run into.<br>
+    Recommended: <b>B now, A for the rolled dino</b> (B tells you, A makes you do it once). C can follow later.</div>
+    <div class="note warn"><b>Check this first:</b> you said the Herrera "deals extra damage attacking from trees". In the code (SlashServer 1.8) a drop attack from a tree does normal slash damage. The +30% is only on a drop from a <b>glide</b> (Glider Wings step 3, GliderDropMul 1.3). From a tree, Tree Stalker gives reach 40 → 55, a charge back, hiding on tree tops and a 0.5 s stun. So the copy here says what the game does today. If you want a real tree-drop damage bonus, that is a separate change.</div>
+  </section>
+
+  <section style="display:grid;gap:10px">
+    <h2>3 · Audit: moves that don't work like a normal button</h2>
+    <p class="sub">Every dino in the roll pool. Source: SkillTree PATHS (Studio, 2026-11-26), the ModelData JUMP settings, ClimbLogic 1.1, SlashServer 1.8, Tutorial 1.6. "Taught today" = the tutorial says it somewhere before you play.</p>
+    <div class="tw"><table>
+      <thead><tr><th>DINO</th><th>MOVE</th><th>HOW YOU DO IT</th><th>FROM</th><th>TAUGHT TODAY</th></tr></thead>
+      <tbody id="audit"></tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+// dino block colors (approximate the PregameModels palette)
+const COL = { Raptor:["#7a8f3a","#c9d36b"], Pachy:["#8a5a3a","#d9a066"], Herrera:["#9a3b2f","#e0785a"], Teno:["#4c6a8a","#9bc0de"],
+  Therizino:["#5f4a8a","#b59be0"], Dilo:["#3f7a4a","#f2c94c"], Troodon:["#3a7f86","#7fe9ff"] };
+function dinoSvg(el, name) {
+  const [a,b] = COL[name] || ["#555","#999"];
+  el.innerHTML = `<svg viewBox="0 0 60 40" style="width:100%;height:100%;display:block"><rect x="14" y="14" width="26" height="14" rx="2" fill="${a}"/>
+  <rect x="36" y="6" width="14" height="10" rx="2" fill="${a}"/><rect x="46" y="10" width="8" height="5" rx="1" fill="${b}"/>
+  <rect x="2" y="16" width="14" height="5" rx="2" fill="${a}"/><rect x="18" y="28" width="5" height="10" fill="${a}"/><rect x="31" y="28" width="5" height="10" fill="${a}"/>
+  <rect x="20" y="11" width="14" height="4" rx="1" fill="#9aa4b4"/><circle cx="46" cy="10" r="1.3" fill="#fff"/></svg>`;
+}
+const ROLE = { Pachy:["HOLDER","#ffc832"], Teno:["HOLDER","#ffc832"], Raptor:["FIGHTER","#ff6b84"], Herrera:["FIGHTER","#ff6b84"], Therizino:["FIGHTER","#ff6b84"], Dilo:["RANGED","#7fe9ff"], Troodon:["RANGED","#7fe9ff"] };
+const MAIN = { Raptor:["TAP","Pounce","Jump on it and hang on."], Pachy:["TAP","Headbutt","Charge into it. You have 2 charges."], Herrera:["TAP","Dash Slash","Dash through it."],
+  Teno:["HOLD","Tail Slam","Hits behind you. Turn your back to it."], Therizino:["TAP x3","Claw Combo","Tap 3 times. The 3rd hit is the big one."],
+  Dilo:["TAP","Spit","5 shots, then it reloads."], Troodon:["TAP","Glow Pod Toss","Lobs a pod. Aim a little ahead."] };
+// special moves: [badge, badge class, name, line, from, taught]
+const MOVES = {
+  Raptor: [["JUMP","","Leap","Every jump is a long leap.","Native","no"],
+           ["AIR","c","Thrusters up","Boost in the air with no stick: straight up.","Thrusters part","no"]],
+  Pachy: [["JUMP","","Leap","Every jump is a leap.","Native","no"],
+          ["JUMP x2","c","Mecha Legs","Leap farther. JUMP again in the air to leap again.","Mecha Legs part","card"],
+          ["ATTACK","p","Blood Rush","Out of headbutts? ATTACK again: pay 25% HP for one more.","Blood Rush part","card"],
+          ["TAP x2","g","Tether Spike","Tap to aim the circle, tap again to throw.","Tether Spike part","card"]],
+  Herrera: [["TREE","g","Climb","Walk into a tree to climb. Pull back to slide down, JUMP to hop off.","Native (ClimbLogic)","no"],
+            ["SLASH","p","Drop Attack","On a tree? SLASH drops onto the dino below.","Native (SlashServer dive)","no"],
+            ["HOLD JUMP","c","Glide","Hold JUMP in the air to glide. SLASH mid-glide: +30% drop.","Glider Wings part","card"],
+            ["STUNNED","","Stun Breaker","Only works while you are stunned or pinned.","Stun Breaker part","card"],
+            ["GLIDING","","Goo Blob","Fires straight down while you glide.","Goo Blob part","no"],
+            ["STEER","","Cruise Missile","You fly the missile in yourself. You stand still meanwhile.","Cruise Missile part","card"]],
+  Teno: [["JUMP","c","Hydraulic Leap","Every jump is a 40-stud leap that lands with a tail slam.","Hydraulic Leap part","card"]],
+  Therizino: [["JUMP","c","Spin Dive","JUMP spins you forward. 3 charges.","Native","no"],
+              ["TAP","g","Fourth Cut","Tap again after the 3rd hit: a spinning sweep.","Fourth Cut stat","no"]],
+  Dilo: [["JUMP","","Cobra Leap","Every jump is a quick leap.","Native","no"],
+         ["HOLD","c","Sniper Scope","Hold to scope in, let go to fire.","Sniper Scope part","card"]],
+  Troodon: [["JUMP x3","c","Flap & Glide","JUMP, then JUMP twice more in the air. Then it glides.","Native","no"],
+            ["STAND","g","Glow Feeder","Stand in your own glow to heal.","Glow Feeder stat","no"],
+            ["TAP x2","","Portal Feathers","Drop one end, run, press again to drop the other.","Portal Feathers part","card"]]
+};
+const POOL = ["Raptor","Pachy","Herrera","Teno","Therizino","Dilo","Troodon"];
+
+// ---- section 1
+let wVariant = "A", rPick = "Herrera";
+const $ = id => document.getElementById(id);
+function show(id) { ["wA","wB","wR","wE"].forEach(s => $(s).hidden = s !== id); $(id).classList.remove("fade"); void $(id).offsetWidth; $(id).classList.add("fade"); }
+function lineup() {
+  const l = $("lineup"); l.innerHTML = ""; l.classList.remove("lit");
+  POOL.forEach(n => { const d = document.createElement("div"); d.className = "d dino"; dinoSvg(d, n); l.appendChild(d); });
+  setTimeout(() => l.classList.add("lit"), 400);
+}
+function startW() { show("w" + wVariant); if (wVariant === "B") lineup(); }
+function roster() {
+  const list = $("rList"); list.innerHTML = "";
+  POOL.forEach(n => {
+    const b = document.createElement("button"); b.className = "r-tile"; b.setAttribute("aria-pressed", n === rPick);
+    const ic = document.createElement("div"); ic.className = "dino"; dinoSvg(ic, n);
+    b.append(ic); const nm = document.createElement("div"); nm.className = "n"; nm.textContent = n.toUpperCase(); b.append(nm);
+    b.onclick = () => { rPick = n; roster(); }; list.appendChild(b);
+  });
+  dinoSvg($("rBig"), rPick);
+  const [role, rc] = ROLE[rPick], m = MAIN[rPick];
+  let h = `<div class="nm">${rPick.toUpperCase()}</div><div><span class="chip" style="background:${rc}">${role}</span> <span class="chip" style="background:#2a3446;color:#dfe6f0">1 IN 7</span></div>
+    <h4>MAIN ATTACK</h4><div class="mv"><span class="badge">${m[0]}</span><div><div class="n">${m[1]}</div><div class="l">${m[2]}</div></div></div>
+    <h4>SPECIAL MOVES <span class="tag-new">NEW</span></h4>`;
+  MOVES[rPick].slice(0, 4).forEach(v => h += `<div class="mv new"><span class="badge ${v[1]}">${v[0]}</span><div><div class="n">${v[2]}</div><div class="l">${v[3]}</div></div></div>`);
+  $("rSide").innerHTML = h;
+}
+document.querySelectorAll(".go").forEach(b => b.onclick = () => { show("wR"); roster(); });
+$("toEgg").onclick = () => show("wE");
+$("wRestart").onclick = startW;
+$("wTabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; wVariant = b.dataset.w;
+  document.querySelectorAll("#wTabs button").forEach(x => x.setAttribute("aria-pressed", x === b)); startW(); };
+startW();
+
+// ---- section 2
+let mVariant = "A", mN = 0;
+const LESSON = [
+  { goal: "Walk into the tree.", item: "CLIMB · walk into the tree", btn: null, call: "PUSH THE STICK AT THE TREE", me: [10.5, 28] },
+  { goal: "Drop on the bot.", item: "DROP ATTACK · SLASH from the tree", btn: "bAtk", call: "TAP SLASH", me: [45, 21] },
+  { goal: "Glide.", item: "GLIDE · hold JUMP in the air", btn: "bJump", call: "JUMP, THEN HOLD JUMP", me: [64, 36] }
+];
+function drawA() {
+  dinoSvg($("mMe"), "Herrera"); dinoSvg($("mBot"), "Pachy");
+  const cur = LESSON[Math.min(mN, 2)];
+  $("mGoal").textContent = mN >= 3 ? "Special moves done!" : cur.goal;
+  $("mList").innerHTML = LESSON.map((l, i) => `<li class="${i < mN ? "done" : i === mN ? "on" : ""}"><span class="k">${i < mN ? "✓" : i + 1}</span>${l.item}</li>`).join("");
+  const ring = $("mRing"), call = $("mCall"), stick = document.querySelector("#mA .stick");
+  if (mN >= 3) { ring.hidden = true; call.hidden = true; return; }
+  ring.hidden = false; call.hidden = false;
+  const tgt = cur.btn ? $(cur.btn) : stick;
+  const pr = $("mPhone").getBoundingClientRect(), r = tgt.getBoundingClientRect(), u = pr.width / 100;
+  const pad = 1.2 * u;
+  Object.assign(ring.style, { left: (r.left - pr.left - pad) + "px", top: (r.top - pr.top - pad) + "px", width: (r.width + pad * 2) + "px", height: (r.height + pad * 2) + "px" });
+  call.textContent = cur.call;
+  call.style.left = Math.min(r.left - pr.left, pr.width - 30 * u) + "px";
+  call.style.top = (r.top - pr.top - 4.4 * u) + "px";
+}
+function drawB() {
+  dinoSvg($("bBig"), "Herrera");
+  $("bMoves").innerHTML = MOVES.Herrera.slice(0, 3).map(v => `<div class="mv new"><span class="badge ${v[1]}">${v[0]}</span><div><div class="n">${v[2]}</div><div class="l">${v[3]}</div></div></div>`).join("");
+}
+const HINTS = [["TREE","c","Walk into a tree to climb it",[30,21]],["SLASH","p","SLASH: drop on dinos below",[42.5,29]],["HOLD JUMP","c","Hold JUMP to glide",[58,38]]];
+function drawC() {
+  dinoSvg($("cMe"), "Herrera");
+  const h = HINTS[Math.min(mN, 2)];
+  $("cToast").firstElementChild.className = "badge " + h[1]; $("cToast").firstElementChild.textContent = h[0]; $("cText").textContent = h[2];
+  $("cMe").style.left = h[3][0] + "cqw"; $("cMe").style.bottom = h[3][1] + "cqw";
+}
+function drawM() {
+  ["mA","mB","mC"].forEach(s => $(s).hidden = s !== "m" + mVariant);
+  $("mStep").hidden = mVariant === "B";
+  $("mHint").textContent = mVariant === "B" ? "Static panel: the new SPECIAL MOVES rows sit under MAIN ATTACK." : "Plays the next move on the screen.";
+  if (mVariant === "A") { const m = LESSON[Math.max(0, Math.min(mN, 3) - 1)]; if (mN > 0) { $("mMe").style.left = m.me[0] + "cqw"; $("mMe").style.bottom = m.me[1] + "cqw"; } else { $("mMe").style.left = "26cqw"; $("mMe").style.bottom = "21cqw"; } drawA(); }
+  if (mVariant === "B") drawB();
+  if (mVariant === "C") drawC();
+}
+$("mStep").onclick = () => { mN = Math.min(mN + 1, 3); drawM(); };
+$("mReset").onclick = () => { mN = 0; drawM(); };
+$("mTabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; mVariant = b.dataset.m; mN = 0;
+  document.querySelectorAll("#mTabs button").forEach(x => x.setAttribute("aria-pressed", x === b)); drawM(); };
+window.addEventListener("resize", () => { if (mVariant === "A") drawA(); });
+drawM();
+
+// ---- section 3
+const T = { no: '<span class="n">NO</span>', card: '<span class="h">PART CARD ONLY</span>' };
+$("audit").innerHTML = POOL.map(d => MOVES[d].map((v, i) => `<tr>${i === 0 ? `<td class="d" rowspan="${MOVES[d].length}">${d}</td>` : ""}<td><b>${v[2]}</b></td><td>${v[3]}</td><td>${v[4]}</td><td>${T[v[5]]}</td></tr>`).join("")).join("");
+</script>
