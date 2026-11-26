@@ -14,6 +14,7 @@
 -- Attributes (defaults): LabChMin 6 (the Lab's ch unit floor: ch = max(H / 100, LabChMin)), LabMinTap 44, LabMinText 11,
 --   LabLeftFrac 0.42, LabLeftFracWide 0.40 (body width >= LabWideW 1000), LabSlotH 6 (ch), LabSaveW 1.25 (x slot),
 --   LabTwoCardsW 560 (right column width for 2 cards a row), LabLooksGridFrac 0.6, LabArtFrac 0.26 (row card art width / card).
+-- Studio fix 2026-11-25: the LOOKS chips span the whole right column (EMOTES grid at 45% left them 42 px wide on a phone).
 local LabLayout = {}
 LabLayout.VERSION = "1.0"
 
@@ -111,9 +112,10 @@ function LabLayout.compute(W, H, opts)
 	L.chipH = math.max(3.6 * ch, TAP)
 	L.chipGap = 0.6 * ch
 	local gw = math.floor(rw * A("LabLooksGridFrac"))
-	L.looksGrid = rect(0, ly + L.chipH + 0.8 * ch, gw, bh - (ly + L.chipH + 0.8 * ch))
-	L.looksChips = rect(0, ly, gw, L.chipH)
-	L.looksDetail = rect(gw + L.gap, ly, rw - gw - L.gap, bh - ly)
+	local gy = ly + L.chipH + 0.8 * ch
+	L.looksChips = rect(0, ly, rw, L.chipH) -- the chips span the column; grid and detail start under them
+	L.looksGrid = rect(0, gy, gw, bh - gy)
+	L.looksDetail = rect(gw + L.gap, gy, rw - gw - L.gap, bh - gy)
 	L.gridCols = W >= A("LabWideW") and 3 or 2
 	L.cellW = (gw - 12 - (L.gridCols - 1) * ch) / L.gridCols
 	L.cellH = math.max(0.8 * ch + math.max(3.2 * ch, 14) + 0.6 * ch + L.text.card * 1.2 + 0.4 * ch + L.text.tag * 1.2 + 0.8 * ch, TAP)

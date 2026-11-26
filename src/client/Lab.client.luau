@@ -2609,9 +2609,11 @@ function L2.layoutBody()
 		local tS, sS = L.text.btn, L.text.hint
 		saveTop.UITextSizeConstraint.MaxTextSize, saveSub.UITextSizeConstraint.MaxTextSize = tS, sS
 		saveTop.UITextSizeConstraint.MinTextSize, saveSub.UITextSizeConstraint.MinTextSize = 9, 8
-		local y0 = (sh - tS - sS - 0.4 * ch) / 2
+		local subH = (L.saveW < 80 and 2 or 1) * sS * 1.1 -- a narrow tile (phone) wraps "FOR PRE-GAME" on 2 lines
+		local y0 = (sh - tS - subH - 0.4 * ch) / 2
+		saveSub.TextWrapped = true
 		saveTop.Position, saveTop.Size = UDim2.fromOffset(0.3 * ch, y0), UDim2.new(1, -0.6 * ch, 0, tS + 2)
-		saveSub.Position, saveSub.Size = UDim2.fromOffset(0.3 * ch, y0 + tS + 0.4 * ch), UDim2.new(1, -0.6 * ch, 0, sS + 2)
+		saveSub.Position, saveSub.Size = UDim2.fromOffset(0.3 * ch, y0 + tS + 0.4 * ch), UDim2.new(1, -0.6 * ch, 0, subH + 2)
 		drawSave()
 	else
 		saveTile.Visible = false
@@ -3086,6 +3088,11 @@ function L2.after() -- after every draw: tips, emote wheel size, text floor, dia
 	end
 	local ring = detail:FindFirstChild("Wheel") -- emote wheel: slots are 0.24 x 0.19 of the ring; make them >= the tap size
 	if ring then ring.Size = UDim2.new(1, 0, 0, math.max(ring.Size.Y.Offset, S.L.minTap / 0.19 + 2)) end
+	for _, c in ipairs(detail:GetChildren()) do -- detail buttons drawn with their own height (LOOKS): at least the tap size
+		if c:IsA("GuiButton") and c.Size.Y.Scale == 0 and c.Size.Y.Offset < S.L.minTap then
+			c.Size = UDim2.new(c.Size.X.Scale, c.Size.X.Offset, 0, S.L.btnH)
+		end
+	end
 	player:SetAttribute("LabSheet", L2.sheet == true)
 	local minT = tonumber(script:GetAttribute("LabMinText")) or 11
 	for _, d in ipairs(gui:GetDescendants()) do
