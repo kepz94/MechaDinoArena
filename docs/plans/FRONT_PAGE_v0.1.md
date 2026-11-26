@@ -45,3 +45,18 @@ the 3D title text (gold gradient, dark extrusion, shadow).
   the Pachy, blue burst), T4 SKINS & TRAILS (kept). T2 / T4 get the new 3D title text. Old T3 / T5 dropped.
 - Description: "and emotes" removed from the Shop line (not confirmed that emotes are sold there).
 Restored: Play stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false, Raptor slots empty, panels and window as before.
+
+## Front page v1.0 (final, 2026-11-25 20:19)
+Kepu 20:06: "V1 + name. And I approve the rest of it." Kepu 20:13: "Mecha battles is glitched" (a stray part from the filming
+stage was pasted over the Pachy's head; fixed by keeping only the largest cut-out piece); 20:14: "For the mecha battles just
+have the raptor shooting the shock cannon at you in a cool style".
+Files (docs/front_page_v1.0/, copies on Kepu's PC in C:\Users\Kepu_\Videos\MechaDinoArena_FrontPage):
+- icon_512.png (upload) and icon_1024.png (master): V1 + NAME.
+- thumb_1_pick_your_dino.jpg: re-filmed closer (recording 20-09-37), same layout as v0.2 T1. The Pachy bot's skin is the
+  grey / blue one this time (v0.2 showed the tan one).
+- thumb_2_mecha_parts.jpg, thumb_4_skins_and_trails.jpg: as approved in v0.2.
+- thumb_3_mecha_battles.jpg: the Lava Raptor fires the Shock Cannon toward the viewer (recording 20-17-29, frame 3.563 s:
+  the ball just out of the barrel with the muzzle ring), 3/4 front, cut out on the blue burst. No Pachy.
+Title not picked (options 1-3 in the mockup); description approved as in the v0.2 mockup. Upload is Kepu's.
+Restored after each shoot: Play stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false, Raptor slots empty, panels and
+window as before.
