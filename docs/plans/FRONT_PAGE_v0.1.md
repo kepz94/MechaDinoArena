@@ -76,3 +76,15 @@ window as before.
   Blocked: scopes universe.place:write and universe.thumbnail:write not granted, and the FrontPage folder is not an
   approved upload folder (asset:write is on). Video thumbnails have no Open Cloud upload; Creator Dashboard only.
   21:12 Kepu: parked for later. Nothing on the live page was changed. Both steps are on Dev Hub as pending for Kepu.
+
+## Front page v1.1 (2026-11-26 11:33)
+Kepu 11:33 (screenshot of a "Build A Mech!" tile: FREE -> TITAN before / after split, red arrow, gold burst): "I want us to Redo our
+icon and thumbnail to something like this. Then have our current icon just be thumbnail sized". Wording kept to gameplay
+(DINO -> MECHA; no "FREE", Roblox thumbnail rules: no promotions or subjective claims). Real frames only:
+docs/front_page_v1.1/src/plain_raptor_frame.jpg (Studio screen_capture: classic Raptor, no parts, an anchored copy on the magenta
+stage, Play only) and src/mecha_raptor_frame_19-40-18_4.5s.png (Game Bar recording 19-40-18 at 4.5 s, Lava Raptor with Shock
+Cannon / Adrenaline / Thrusters lit). Built by tools/frontpage/v11_build.py. Files: thumb_dino_to_mecha.jpg (1920 x 1080: blue
+sky + baseplate grass, plain Raptor, "DINO" | white slanted divider | gold burst, mecha Raptor, "MECHA", red arrow),
+icon_dino_to_mecha_1024.png / _512.png (same split, square), thumb_current_icon.jpg (the v1.0 icon as a framed card on a matching
+blue burst). Copies on Kepu's PC: Downloads\MechaDinoArena_UPLOAD. Upload is Kepu's (Creator Hub; Open Cloud thumbnail scope not
+granted).
