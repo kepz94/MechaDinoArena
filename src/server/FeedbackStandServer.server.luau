@@ -3,8 +3,9 @@
 --   (Recommended)": the kiosk opens Roblox's own feedback window (FeedbackClient 1.0, SocialService:PromptFeedbackSubmissionAsync),
 --   and the notes land in Creator Hub > Creations > Mecha Dino Arena > Audience > Feedback. Nothing is stored by the game.
 -- Hub servers only. Waits for Workspace.ShopStand (ShopStandServer) and Workspace.PortalIslet.Plaza, then builds
---   Workspace.FeedbackStand at FeedbackStandRadius (45) studs from the plaza centre c, at FeedbackStandAngle (135) degrees from world +X
---   toward +Z (across the plaza from the Favorite Egg at 315; shop 160, LOBBY board 347, WORLD board ~110), on the ground (ray down),
+--   Workspace.FeedbackStand at FeedbackStandRadius (45) studs from the plaza centre c, at FeedbackStandAngle (145) degrees from world +X
+--   toward +Z (across the plaza from the Favorite Egg at 315; shop 160, LOBBY board 347, WORLD board ~110; Studio check 2026-11-26:
+--   at 135 it stood in front of the WORLD board's corner from the plaza), on the ground (ray down),
 --   facing c.
 -- Look (studs, before scaling; the front faces c): a dark metal plinth (6 x 1 x 4, rgb(43,50,61)) with a cyan neon strip on its front
 --   edge; a post (1.2 x 5 x 1.2, rgb(58,67,80)); a screen box (7 x 4.2 x 0.6, rgb(13,18,24)) tilted back 12 degrees, with a cyan neon
@@ -14,14 +15,14 @@
 --   MaxActivationDistance FeedbackPromptRange (14), RequiresLineOfSight false.
 -- Size: Model:ScaleTo(FeedbackStandScale (2)) about its ground point; the screen's PixelsPerStud is 50 / scale so its text keeps its
 --   look. ModelStreamingMode Persistent (StreamingEnabled: FeedbackClient needs the prompt).
--- Switches / numbers (script attributes, read at start): FeedbackStandEnabled (true), FeedbackStandAngle (135), FeedbackStandRadius
+-- Switches / numbers (script attributes, read at start): FeedbackStandEnabled (true), FeedbackStandAngle (145), FeedbackStandRadius
 --   (45), FeedbackStandScale (2), FeedbackPromptRange (14).
 -- Diagnostics: FeedbackStandServerVersion, FeedbackStandState ("off" / "notHub" / "waiting" / "built" / "error: ...").
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local VERSION = "1.0"
 script:SetAttribute("FeedbackStandServerVersion", VERSION)
-for k, v in pairs({FeedbackStandEnabled = true, FeedbackStandAngle = 135, FeedbackStandRadius = 45, FeedbackStandScale = 2,
+for k, v in pairs({FeedbackStandEnabled = true, FeedbackStandAngle = 145, FeedbackStandRadius = 45, FeedbackStandScale = 2,
 	FeedbackPromptRange = 14}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -78,7 +79,7 @@ local ok, err = pcall(function()
 	local c = Vector3.new(plaza.Position.X, 0, plaza.Position.Z)
 	local sp = shop:GetPivot()
 	local r = tonumber(script:GetAttribute("FeedbackStandRadius")) or 45
-	local a = math.rad(tonumber(script:GetAttribute("FeedbackStandAngle")) or 135)
+	local a = math.rad(tonumber(script:GetAttribute("FeedbackStandAngle")) or 145)
 	local x, z = c.X + math.cos(a) * r, c.Z + math.sin(a) * r
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude

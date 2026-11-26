@@ -16,8 +16,12 @@ local SocialService = game:GetService("SocialService")
 local UIS = game:GetService("UserInputService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 mouse held free until the player moves
+-- v1.1 (Studio check 2026-11-26: PromptFeedbackSubmissionAsync returns in ~0.4 s while Roblox's window stays open): the mouse stays
+--   free from the prompt until at least FeedbackMouseHold (1.5) s have passed and the player's dino moves (Humanoid.MoveDirection),
+--   or FeedbackMouseMax (30) s. Switch: FeedbackHoldUntilMove (true, read per prompt; false = 1.0, free for FeedbackMouseHold only).
 script:SetAttribute("FeedbackClientVersion", VERSION)
-for k, v in pairs({FeedbackClientEnabled = true, FeedbackMouseHold = 1.5}) do
+for k, v in pairs({FeedbackClientEnabled = true, FeedbackMouseHold = 1.5, FeedbackMouseMax = 30, FeedbackHoldUntilMove = true}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
 local function state(s) script:SetAttribute("FeedbackClientState", s) end
@@ -66,7 +70,16 @@ local function onPrompt(who)
 	local ok, err = pcall(function() SocialService:PromptFeedbackSubmissionAsync() end)
 	script:SetAttribute("FeedbackLastResult", ok and "ok" or ("error: " .. tostring(err)))
 	if not ok then showToast("FEEDBACK IS NOT OPEN RIGHT NOW") end
-	task.delay(tonumber(script:GetAttribute("FeedbackMouseHold")) or 1.5, function()
+	task.spawn(function() -- v1.1: Roblox's window stays up after the call returns, so hold until the player moves or FeedbackMouseMax
+		local t0 = os.clock()
+		local hold = tonumber(script:GetAttribute("FeedbackMouseHold")) or 1.5
+		local max = math.max(hold, tonumber(script:GetAttribute("FeedbackMouseMax")) or 30)
+		while os.clock() - t0 < max do
+			task.wait(0.2)
+			local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+			if os.clock() - t0 >= hold and (script:GetAttribute("FeedbackHoldUntilMove") == false
+				or (hum and hum.MoveDirection.Magnitude > 0.1)) then break end
+		end
 		pcall(function() RunService:UnbindFromRenderStep("FeedbackMouse") end)
 		busy = false
 	end)
