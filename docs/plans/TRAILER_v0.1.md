@@ -111,3 +111,23 @@ Fights: 32 dinos (clones of practice bots, Workspace.DinoIsland.Bots, Play only)
 ordered mobility > control > damage, every 2.5-4 s, health topped up under 35%. Not saved. Lab / Shop: tools/trailer/uicam.py
 renders a virtual camera (keyframed centre + width, smoothstep) over the recorded UI and draws a yellow pop-in highlight box on
 the card being picked. PracticeServer PracticeTeamSize was set to 5 for the shoot and cleared after (nil = code default 4).
+
+## Trailer v0.5 cut (2026-11-25 18:26)
+
+Kepu 17:46 / 17:49: gameplay looked glitchy and jumpy, shots unreadable to someone new to the game, the Raptor cannon angle
+did not show where the shot came from, the GG angle was bad and the Glitch skin is hard to see. Causes found: Game Bar was
+recording at 30 fps (now 60 fps, quality High, Kepu option "3"); bot mecha part FX only render for player characters (the
+*FX client scripts watch Players only), so v0.4 fights showed moves with no effects. Cut: 28.9 s, silent, 1920x1080 30 fps,
+C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.5.mp4 (not in the repo). Sources: 18-07-18 (battle, hero fight, cannon, GG;
+file time = Studio clock - 18:07:14.3) and 18-14-22 (glide), v0.4 portal / Lab / Shop renders. Shot order: portal, battle
+wide, battle medium, Teno leaps on a Dilo, Lab (UNLOCK DINOS & MECHA PARTS), Herrera leaves the mountain, Herrera crosses
+the sun, Herrera over the battle, pull-out, Lava Raptor fires the Shock Cannon (side-on, both dinos in frame), ball ride into
+the Pachy at 0.5x with the stun, Shop (SKINS & TRAILS), Lava Raptor GG over a downed Pachy (low 3/4 front), logo.
+Filming-only (Play session, nothing saved to the place): runtime copies of 15 FX LocalScripts (CINE_<name>) with their
+Players.PlayerAdded / GetPlayers hooks pointed at Workspace.DinoIsland.Bots TC_ / TH_ models so bot moves show FX; 24 bots
+in 12 pairs (Studio 33 fps with them moving, 55 fps paused); practice match bots parked in ServerStorage; hero fights and
+cannon on the meadow at (-95, 268); HardpointHUD script attribute HardpointHUDMarkerFeedGap false (stops an error spam while
+the HUD is hidden). Account changes during the shoot: SkillSlot1 set to screech for the cannon, then cleared back to empty;
+species switched to Herrera for the glide, then back to Raptor; Raptor skin stays lava. Restored after: Play stopped,
+ModeTestPractice nil, SkillTestMaxAllEnabled false (checked), quality Automatic, Output + Asset Manager side by side again,
+window snapped left. Game Bar left at 60 fps / High.
