@@ -293,7 +293,21 @@ local armorMul do -- v1.8 (MDA-366): armor on every attack, ServerStorage.DinoAr
 	end
 	if script:GetAttribute("DiloAttackServerArmorAllEnabled") == nil then script:SetAttribute("DiloAttackServerArmorAllEnabled", true) end
 end
+-- v1.14 (Kepu 2026-11-26 11:09 "venom spit needs to spit faster. damage needs to be higher all around for the abilities. for the dilo."; standing pick "whatever the recommended
+--   option is ... just choose that"): (1) every Dilo hit from this script (spit dart "dilodart", spit poison ticks "dilovenom",
+--   sniper spit "dilosnipe", bite "dilobite") is multiplied by script attribute DiloDamageMul (1.5, read per hit) before armor;
+--   deflected darts that hurt the dilo itself ("deflect") are not. (2) The spit dart flies DiloSpitSpeedMul (1.375, read per
+--   spit) x the character's DiloDartSpeed (40 -> 55 studs/s; the Sniper Scope ball and the Venom Gatling keep their own speeds).
+--   Switch: DiloBuff114Enabled (true, read per hit / spit; false = 1.13). Diagnostic: DiloBuffHits (count).
+for k, v in pairs({DiloDamageMul = 1.5, DiloSpitSpeedMul = 1.375, DiloBuff114Enabled = true}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+local DILO_WITH = {dilodart = true, dilovenom = true, dilosnipe = true, dilobite = true}
 local function takeHealth(m, d, killerName, killerId, with, t)
+	if DILO_WITH[with] and script:GetAttribute("DiloBuff114Enabled") ~= false then -- v1.14
+		d *= math.max(0, tonumber(script:GetAttribute("DiloDamageMul")) or 1.5)
+		script:SetAttribute("DiloBuffHits", (script:GetAttribute("DiloBuffHits") or 0) + 1)
+	end
 	d *= armorMul(m) -- v1.8 (MDA-366): armor
 	local hp = m:GetAttribute("DummyHealth")
 	if typeof(hp) ~= "number" or d <= 0 then return end
@@ -504,6 +518,7 @@ local function fireDart(player, char, t)
 	local target = pickTarget(char, from, fwd)
 	local to = target and rootOf(target).Position or from + fwd * math.max(0, get(char, "DiloDartRange")) * s
 	local speed = math.max(1, get(char, "DiloDartSpeed")) * s
+	if script:GetAttribute("DiloBuff114Enabled") ~= false then speed *= math.max(0.1, tonumber(script:GetAttribute("DiloSpitSpeedMul")) or 1.375) end -- v1.14
 	local flight = (to - from).Magnitude / speed
 	char:SetAttribute("DiloDartFrom", from)
 	char:SetAttribute("DiloDartTo", to)
@@ -975,6 +990,7 @@ script:SetAttribute("DiloAttackServerVersion", "1.11") -- v1.11 sniper spit (MDA
 --   default 6 (was 2): the ball flies DiloDartSpeed 40 x 6 = 240 studs/s x scale (full range 120 studs in 0.5 s).
 script:SetAttribute("DiloAttackServerVersion", "1.12") -- v1.12 sniper ball 240 studs/s
 script:SetAttribute("DiloAttackServerVersion", "1.13") -- v1.13 pre-match lock
+script:SetAttribute("DiloAttackServerVersion", "1.14") -- v1.14 dilo buff: damage x1.5, spit 55 studs/s (see the note at takeHealth)
 -- v1.13 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
 --   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
 --   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
