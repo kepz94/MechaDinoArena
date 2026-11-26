@@ -100,6 +100,11 @@ local DataStoreService = game:GetService("DataStoreService")
 local VERSION = "1.3" -- v1.3 emote receipts hook
 VERSION = "1.4" -- v1.4 trail receipts hook
 VERSION = "1.5" -- v1.5 SkinPaintBot for filler bots
+VERSION = "1.6" -- v1.6 island streak earn stat
+-- v1.6 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 3): the earn stats also carry istreak =
+--   max(StatIslandBest, IslandStreak) (SkinStats 1.1) for UniversalSkins 1.4 (Zebra 10, Storm Front 25), and a change of
+--   IslandStreak / StatIslandBest runs the earn check. Switch: script attribute SkinIslandStreakEarnEnabled (default true, read
+--   per check; false = istreak 0, so the streak skins stay locked).
 local STORE = "MDA_Skins_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local RETRY_GAP = 30
@@ -779,7 +784,10 @@ local function onBuyUni(player, id, forSpecies)
 end
 local function statsOf(player)
 	local streak = math.max(tonumber(player:GetAttribute("StatBestStreak")) or 0, tonumber(player:GetAttribute("ArenaStreak")) or 0)
-	return {w = player:GetAttribute("ArenaW"), l = player:GetAttribute("ArenaL"), kills = player:GetAttribute("StatKills"), best = streak}
+	local istreak = script:GetAttribute("SkinIslandStreakEarnEnabled") ~= false -- v1.6
+		and math.max(tonumber(player:GetAttribute("StatIslandBest")) or 0, tonumber(player:GetAttribute("IslandStreak")) or 0) or 0
+	return {w = player:GetAttribute("ArenaW"), l = player:GetAttribute("ArenaL"), kills = player:GetAttribute("StatKills"), best = streak,
+		istreak = istreak}
 end
 checkEarn = function(player)
 	local st = states[player]
@@ -812,7 +820,7 @@ checkEarn = function(player)
 end
 if uni then
 	local WATCH = {ArenaW = true, ArenaL = true, ArenaStreak = true, StatKills = true, StatBestStreak = true, ArenaRecordReady = true,
-		SkinStatsReady = true}
+		SkinStatsReady = true, IslandStreak = true, StatIslandBest = true} -- v1.6: + island streak
 	local function watch(player)
 		player.AttributeChanged:Connect(function(name)
 			if WATCH[name] then task.spawn(checkEarn, player) end

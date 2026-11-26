@@ -3690,3 +3690,10 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkillServer 1.15 (script): `SkillUniversalEnabled` (true, read at each player's load), `SkillGrantPointsEnabled` (true, per call), `SkillBonusMax` (unset = no cap; a number caps the bonus), `SkillPointGrants` (count of "ok" grants). BindableFunction `SkillGrantPoints` (Invoke(player, amount 1..100, reason) -> "ok", before, after | "disabled" | "notLoaded" | "badArg").
 - Player: `SkillBonusPoints`, `SkillUniversal` ("on" / "off"), `SkillAccountFrom` ("new" / "max of N dinos" / "uxp of N dinos"), `SkillLastPoints` ("quest +3"). SkillLevel / SkillXP / SkillPoints / SkillLeft now carry the account values (SkillPoints includes the bonus).
 - Save value (MDA_Skills_v3): top-level `uxp` (account XP) and `bonus` added; v stays 2.
+
+## Island Kill Streak v1.0 (2026-11-26, plan docs/plans/ISLAND_STREAK_v1.0.md)
+- UniversalSkins 1.4: module flag `US.ISLAND_STREAK_UNLOCKS` (true). Earn stat "istreak": Zebra 10, Storm Front 25.
+- SkinStats 1.1 (script): `SkinStatsIslandStreakEnabled` (true, per kill). Diagnostics `IslandStreakCounted`, `IslandStreakResets`. Player `IslandStreak` (current), `StatIslandBest` (saved best; DataStore field `ib` in MDA_SkinStats_v1).
+- SkinServer 1.6 (script): `SkinIslandStreakEarnEnabled` (true, per earn check).
+- Lab 2.2: none (uniStats carries istreak).
+- IslandTags 1.7 (script, per frame): `IslandTagsStreakEnabled` (true), `IslandTagsStreakMin` (1), `IslandTagsStreakTier2` (10), `IslandTagsStreakTier3` (25), `IslandTagsStreakFlicker` (0.25 s; 0 = no flicker).

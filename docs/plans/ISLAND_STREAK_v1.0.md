@@ -132,3 +132,11 @@ Then VERSIONS / ATTRIBUTES, commit, Dev Hub ticket.
 2. **The flame is on almost everyone.** "After first kill" means nearly every living player carries a flame. Accepted by the pick; the tier colours (10 blue, 25 violet) carry the "spree" meaning.
 3. **Player kills can't be tested in Studio.** We never test with a second player, so only bot kills are checked there. Player kills use the same KillCredit path (KillFeedServer → SkinStats), so the first live player kill is the real check.
 4. **Order next to the rank badge.** The flame goes left of the rank badge (`[flame] [rank] NAME`). The other way round is `[rank] [flame] NAME`.
+
+## Synthesis (Kepu 2026-11-26)
+- R1 "Players + bots (as picked)": any 25 kills in one life unlock Storm Front.
+- R2 "Flame first": `[flame N] [rank] NAME 1W 0L`.
+- R3 "OK, check live": Studio tests bot kills; the first live player kill after publish is the PvP check.
+
+## Build (2026-11-26)
+Built as planned; patches tools/islandstreak_patch_*.luau (tools/islandstreak_generator.py), spec tools/tests/UniversalSkins14.spec.luau PASS 37. Studio results in docs/VERSIONS.md. Open: the "SKIN UNLOCKED" toast in the mockup only exists inside the Lab today (Lab 1.18 toasts while open); on the island an earned skin shows no pop-up. Not built (not in the picked option); asked Kepu.

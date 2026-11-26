@@ -22,7 +22,15 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.0"
-local STORE = "MDA_SkinStats_v1"
+VERSION = "1.1" -- v1.1 island kill streak
+-- v1.1 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 2; Kepu 2026-11-26 "a fire streak emblem once you go on a killing spree on the main island. 25 kills streak unlocks the
+--   thunder storm skin. 10 kill streak unlocks the zebra"; kills of players and bots, main island
+--   only; picks "Death or menu"): every counted kill (after the dedupe above) also adds 1 to the killer's island streak when
+--   script attribute SkinStatsIslandStreakEnabled ~= false, ReplicatedStorage ServerKind == "hub", the killer's TutLane is not
+--   > 0 and the killer's Humanoid is alive. The streak goes back to 0 when the killer's Humanoid dies, on a new character and
+--   when the player's InMenu turns true. Best island streak = max(best, streak), saved as ib in the same UpdateAsync merge
+--   (ib = max(stored, ours); v stays 1) and loaded with the rest. Player attributes IslandStreak (current) and StatIslandBest
+--   (best). Diagnostics: script IslandStreakCounted, IslandStreakResets. false = 1.0.local STORE = "MDA_SkinStats_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local RETRY_GAP = 30
 local SAVE_GAP = 10
@@ -56,13 +64,16 @@ local function publish(player)
 	player:SetAttribute("StatKills", st.k + st.pending)
 	player:SetAttribute("StatBestStreak", st.best)
 	player:SetAttribute("SkinStatsReady", st.loaded)
+	player:SetAttribute("IslandStreak", st.istreak or 0) -- v1.1
+	player:SetAttribute("StatIslandBest", st.ib or 0) -- v1.1
 end
 
 local function save(player)
 	local st = states[player]
 	if not (st and st.loaded and store) then return end
-	if st.pending == 0 and not st.bestDirty then return end
+	if st.pending == 0 and not st.bestDirty and not st.ibDirty then return end -- v1.1: + ibDirty
 	local add, best = st.pending, st.best
+	local ib = st.ib or 0 -- v1.1
 	local stored
 	local function attempt()
 		return pcall(function()
@@ -71,6 +82,7 @@ local function save(player)
 				v.v = 1
 				v.k = (tonumber(v.k) or 0) + add
 				v.best = math.max(tonumber(v.best) or 0, best)
+				v.ib = math.max(tonumber(v.ib) or 0, ib) -- v1.1
 				stored = v
 				return v
 			end)
@@ -83,6 +95,8 @@ local function save(player)
 		st.k = stored.k
 		st.best = math.max(st.best, stored.best)
 		if st.best == best then st.bestDirty = false end
+		st.ib = math.max(st.ib or 0, tonumber(stored.ib) or 0) -- v1.1
+		if st.ib == ib then st.ibDirty = false end
 		player:SetAttribute("SkinStatsState", "saved")
 		publish(player)
 	else
@@ -112,6 +126,7 @@ local function tryLoad(player)
 			if type(value) == "table" then
 				st.k = math.max(0, math.floor(tonumber(value.k) or 0))
 				st.best = math.max(st.best, math.floor(tonumber(value.best) or 0))
+				st.ib = math.max(st.ib or 0, math.floor(tonumber(value.ib) or 0)) -- v1.1
 				player:SetAttribute("SkinStatsState", "loaded")
 			else
 				player:SetAttribute("SkinStatsState", "new")
@@ -140,10 +155,29 @@ end
 
 local function onPlayer(player)
 	states[player] = {loaded = false, k = 0, pending = 0, best = 0, bestDirty = false, lastChange = 0}
+	states[player].istreak, states[player].ib, states[player].ibDirty = 0, 0, false -- v1.1
 	player:SetAttribute("SkinStatsState", "loading")
 	publish(player)
 	player:GetAttributeChangedSignal("ArenaStreak"):Connect(function() onStreak(player) end)
 	onStreak(player)
+	local function resetStreak() -- v1.1: death, a new body or the menu ends the island streak
+		local s = states[player]
+		if s and (s.istreak or 0) > 0 then
+			s.istreak = 0
+			bump("IslandStreakResets")
+			publish(player)
+		end
+	end
+	local function hookChar(c)
+		resetStreak()
+		local hum = c:WaitForChild("Humanoid", 10)
+		if hum then hum.Died:Connect(resetStreak) end
+	end
+	player.CharacterAdded:Connect(hookChar)
+	if player.Character then task.spawn(hookChar, player.Character) end
+	player:GetAttributeChangedSignal("InMenu"):Connect(function()
+		if player:GetAttribute("InMenu") == true then resetStreak() end
+	end)
 	task.spawn(tryLoad, player)
 	task.spawn(function()
 		while player.Parent and states[player] and not states[player].loaded do
@@ -154,6 +188,24 @@ local function onPlayer(player)
 	end)
 end
 
+-- v1.1: the island streak part of a counted kill
+if script:GetAttribute("SkinStatsIslandStreakEnabled") == nil then script:SetAttribute("SkinStatsIslandStreakEnabled", true) end
+script:SetAttribute("IslandStreakCounted", 0)
+script:SetAttribute("IslandStreakResets", 0)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local function islandKill(player, st)
+	if script:GetAttribute("SkinStatsIslandStreakEnabled") == false or ReplicatedStorage:GetAttribute("ServerKind") ~= "hub" then return end
+	if (tonumber(player:GetAttribute("TutLane")) or 0) > 0 then return end
+	local c = player.Character
+	local hum = c and c:FindFirstChildOfClass("Humanoid")
+	if not (hum and hum.Health > 0) then return end
+	st.istreak = (st.istreak or 0) + 1
+	if st.istreak > (st.ib or 0) then
+		st.ib = st.istreak
+		st.ibDirty = true
+	end
+	bump("IslandStreakCounted")
+end
 -- kills
 local seen = setmetatable({}, {__mode = "k"}) -- [victim model] = {[KilledAt key] = true}
 local function onKill(userId, victim, at)
@@ -170,6 +222,7 @@ local function onKill(userId, victim, at)
 	st.pending += 1
 	st.lastChange = os.clock()
 	bump("SkinStatsCounted")
+	islandKill(player, st) -- v1.1
 	publish(player)
 end
 local hooked = {}
@@ -199,7 +252,7 @@ task.spawn(function()
 	while true do
 		task.wait(1)
 		for player, st in pairs(states) do
-			if st.loaded and (st.pending > 0 or st.bestDirty) and os.clock() - st.lastChange >= SAVE_GAP then
+			if st.loaded and (st.pending > 0 or st.bestDirty or st.ibDirty) and os.clock() - st.lastChange >= SAVE_GAP then
 				save(player)
 				st.lastChange = os.clock()
 			end

@@ -50,6 +50,12 @@ local CollectionService = game:GetService("CollectionService")
 
 local US = {}
 US.VERSION = "1.3" -- v1.3 price steps bland 149 / glowing 499 / animated 999 (v1.2 Prism 999; v1.1 whole-body animation)
+US.VERSION = "1.4" -- v1.4 island streak unlocks (Zebra 10, Storm Front 25)
+-- v1.4 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 1; Kepu 2026-11-26 "a fire streak emblem once you go on a killing spree on the main island. 25 kills streak unlocks the
+--   thunder storm skin. 10 kill streak unlocks the zebra"; roadmap D3 "Streak replaces old";
+--   Storm Front "Earn only"): with US.ISLAND_STREAK_UNLOCKS (true) Zebra unlocks at a 10 kill streak on the island and Storm Front
+--   at a 25 kill streak (earn stat "istreak" = stats.istreak, SkinServer / Lab: max(StatIslandBest, IslandStreak) from SkinStats
+--   1.1). Storm Front is no longer a Robux skin (owners keep it); its look, anim and ORDER place are unchanged. false = 1.3.
 US.ANIM_TAG = "SkinAnim"
 US.DINOS = {"Raptor", "TRex", "Pachy", "Herrera", "Teno", "Therizino", "Dilo", "Troodon"}
 US.DINO_NAMES = {Raptor = "RAPTOR", TRex = "T-REX", Pachy = "PACHY", Herrera = "HERRERA", Teno = "TENO", Therizino = "THERIZINO",
@@ -242,6 +248,11 @@ US.SKINS = {
 			return hex, "Neon", "wave", 0
 		end},
 }
+US.ISLAND_STREAK_UNLOCKS = true -- v1.4
+if US.ISLAND_STREAK_UNLOCKS then
+	US.SKINS.zebra.unlock = earn("istreak", 10, "Get a 10 kill streak on the island")
+	US.SKINS.storm.unlock = earn("istreak", 25, "Get a 25 kill streak on the island")
+end
 for id, sk in pairs(US.SKINS) do
 	sk.id = id
 	if not sk.sw and sk.cols then
@@ -282,7 +293,8 @@ function US.progress(id, stats)
 	if s == "matches" then have = w + l
 	elseif s == "wins" then have = w
 	elseif s == "kills" then have = tonumber(stats.kills) or 0
-	elseif s == "best" then have = tonumber(stats.best) or 0 end
+	elseif s == "best" then have = tonumber(stats.best) or 0
+	elseif s == "istreak" then have = tonumber(stats.istreak) or 0 end -- v1.4
 	return math.min(have, sk.unlock.need), sk.unlock.need
 end
 function US.unlocked(id, stats)

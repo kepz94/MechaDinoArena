@@ -144,6 +144,10 @@ VERSION = "1.19" -- v1.19 LOOKS (SKINS / EMOTES)
 VERSION = "1.20" -- v1.20 LOOKS: TRAILS
 VERSION = "2.0" -- v2.0 Lab Revamp v1.0: slots first
 VERSION = "2.1" -- v2.1 Looks Lab v1.0: owned first, locked tiles say why, emote wheel on the left
+VERSION = "2.2" -- v2.2 island streak progress
+-- v2.2 (island kill streak, plan docs/plans/ISLAND_STREAK_v1.0.md Task 4): uniStats() also carries istreak = max(StatIslandBest,
+--   IslandStreak) (SkinStats 1.1), so the Zebra and Storm Front cards (UniversalSkins 1.4) show their island streak progress through
+--   the existing earn card path. No layout change.
 -- v2.1 (Looks Lab v1.0; Kepu 2026-11-26 01:06 "Instead of having a second row of tabs for owned/earned/robux and all, just have the
 --   owned skins show up first, the rest locked and showing why it's locked, if it's for Robux have it say buy, if it's for a
 --   challenge have it show the challenge when you click on it and the progression" / "It makes more sense to just click on the
@@ -987,7 +991,8 @@ local function uniOwns(id) return uniMod().owns(id, uniOwnedSet(), player:GetAtt
 local function uniEquipped(sp) return uniMod().sanitize(player:GetAttribute("SkinEquipped_" .. sp)) end
 local function uniStats()
 	return {w = player:GetAttribute("ArenaW"), l = player:GetAttribute("ArenaL"), kills = player:GetAttribute("StatKills"),
-		best = math.max(tonumber(player:GetAttribute("StatBestStreak")) or 0, tonumber(player:GetAttribute("ArenaStreak")) or 0)}
+		best = math.max(tonumber(player:GetAttribute("StatBestStreak")) or 0, tonumber(player:GetAttribute("ArenaStreak")) or 0),
+		istreak = math.max(tonumber(player:GetAttribute("StatIslandBest")) or 0, tonumber(player:GetAttribute("IslandStreak")) or 0)} -- v2.2
 end
 local function uniPrice(sk)
 	local live = player:GetAttribute("SkinPrice_" .. tostring(sk.unlock.rarity))
