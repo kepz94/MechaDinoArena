@@ -98,3 +98,16 @@ with 140.6-141.5 slowed 2x), 16-18-41 (Lab, Shop). Crowd shot: 39 dinos (clones 
 character into Workspace.TrailerCrowd, Play session only) paired up across the island and, for the glide, along its path,
 moving with Humanoid:MoveTo and stamping BiteStartedAt / BiteHitAt so the bite poses play. Not saved; Play stopped.
 Downed dino in the GG shot: a crowd Pachy anchored on its side. Cannon at 100 studs, aimed via DinoScreechRequest.
+
+## Trailer v0.4 cut (2026-11-25 17:37)
+
+Kepu 17:14: dinos must really fight with combo abilities, better angles, the Lab must zoom in on the mecha part cards with a
+highlight while selecting; research how scenes / fights / UI are shot. Research applied: 180-degree line kept per fight (the
+camera stays on one side of the two fighters), wide shot to set the scene then medium shots on hits, one fight per shot
+(no effect soup), UI shown by isolating one element (zoom / crop, highlight). Cut: 29.7 s, silent,
+C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.4.mp4. Source recording 17-19-47 (+ 14-42-04 portal, 17-00-19 glide / cannon).
+Fights: 32 dinos (clones of practice bots, Workspace.DinoIsland.Bots, Play only) in 16 pairs; each uses its REAL main attack
+(PracticeBrain.ATTACK[species].fire) and REAL mecha parts through PracticeKit.useNow (the servers' BotMechaUse entrances),
+ordered mobility > control > damage, every 2.5-4 s, health topped up under 35%. Not saved. Lab / Shop: tools/trailer/uicam.py
+renders a virtual camera (keyframed centre + width, smoothstep) over the recorded UI and draws a yellow pop-in highlight box on
+the card being picked. PracticeServer PracticeTeamSize was set to 5 for the shoot and cleared after (nil = code default 4).
