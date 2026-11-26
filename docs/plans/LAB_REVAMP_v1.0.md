@@ -1,4 +1,4 @@
-# Mecha Dino Arena — Lab 2.0 (Lab Revamp v1.0) — plan, DRAFT (red-team pending)
+# Mecha Dino Arena — Lab 2.0 (Lab Revamp v1.0) — plan (red-teamed 2026-11-25)
 
 **Goal:** The Lab works on a phone and on PC. Every button is at least 44 px tall and wide on a phone, and a first-time player can see how to put a part in a slot.
 **Chosen direction:** B · SLOTS FIRST. Prototype at docs/mockups/lab_revamp_v0.1/index.html (artifact https://claude.ai/artifact/QVp5s7e9VGgV72PGZAS89F). Kepu 2026-11-25 22:46 asked for the revamp; at about 23:05 he picked "B: Slots first" and "Replace it" (no switch back to the 3-column Lab).
@@ -129,7 +129,7 @@ Units: `u = clamp(H / 38.1, 9, 14)` px. That is 10 at H 381 (phone) and 14 at H 
 - GOT IT button (44 px).
 - Shows on ABILITIES while any slot is empty and GOT IT has not been tapped this session (see red-team R3).
 
-**Compact mode (island):** same arrangement inside today's inset panel. 2 tabs. No LOOKS.
+**Compact mode (island):** 2 tabs, no LOOKS. On touch devices it opens full screen (the full-mode box), because the inset panel left about 585 × 300 px on a 750 × 381 phone (red-team R3). On PC it stays the inset panel. The game keeps running behind it, and `LabOpen` stays "compact" either way.
 
 **Portrait / very wide screens:** LabLayout clamps `u` and keeps landscape math (the game is landscape-only today; not changed).
 
@@ -195,7 +195,7 @@ Units: `u = clamp(H / 38.1, 9, 14)` px. That is 10 at H 381 (phone) and 14 at H 
 **Acceptance:**
 - Phone emulation: every tappable element is at least 44 × 44 (printed list empty).
 - PC 1280 × 720 is unchanged in function.
-- Compact on the island opens with 2 tabs.
+- Compact on the island opens with 2 tabs: full screen on touch (R3), the inset panel on PC.
 - `LabOpen` / `LabTab` values as before.
 - Music still plays the lab track in full.
 
@@ -290,3 +290,13 @@ Units: `u = clamp(H / 38.1, 9, 14)` px. That is 10 at H 381 (phone) and 14 at H 
 - **Placeholders:** none.
 - **Names:** `Card_<id>`, `Actions`, `Btn`, `T`, `Slot_n`, `Sheet`, `LabSheet`, `LabTipDone` are the same across tasks.
 - **Fence:** server scripts untouched; Music / attack scripts read the same `LabOpen` values.
+
+## Red-team (2026-11-25) and Kepu's rulings
+
+| # | Challenge | Ruling | Effect on the plan |
+|---|---|---|---|
+| R1 | The Tutorial's Lab coach finds Lab buttons by name (`Actions` > EQUIP). An EQUIP on every card would mis-target. | Accepted (fix in the same release) | Task 7; Task 3 keeps the names. |
+| R2 | "Replace it" leaves no fallback while the Lab also sells skins, emotes and trails. | Kepu: "Replace now" | Accepted risk, recorded in the ADR. Task 8 QA covers every buy flow (prompt shown, never completed) before publish. |
+| R3 | The island compact panel on a phone is too small for 44 px slots. | Kepu: "Full screen on phones" | Compact mode is full screen on touch (Layout section); the LabLayout spec covers compact touch at 750 × 381 and 667 × 375. |
+| R4 | "First time" needs memory across joins, which means a server save. | Kepu: "While a slot is empty" | Task 6: no server change; GOT IT lasts for the session. |
+| R5 | Scope: a 3188-line script at the local limit; splitting into two releases would be safer. | Kepu: "One release" | All 8 tasks ship together; publish only on "Publish". |
