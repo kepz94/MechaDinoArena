@@ -183,3 +183,6 @@ Then phone + PC screenshots. Docs, commit, ticket.
 - R2 "Use as written": the daily pool and the weekly list as above (numbers in QuestRules, tunable).
 - R3 "OK": part uses = cooldown stamps (`*ReadyAt` up) + DashCount; Arena progress shows after the trip back.
 - R4 "Dailies + streak skins first": release 1 = Tasks 1-7 without the rotating weekly special (QuestRules.specials returns the two permanent ones; the weekly list ships in the next release on the same stand).
+
+## Build (2026-11-26, release 1)
+Built Tasks 1-7 without the weekly special. Studio results and the two fixes in docs/VERSIONS.md. Not published. Next release: the rotating weekly special (+5 points, list above) on the same stand.

@@ -3697,3 +3697,11 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkinServer 1.6 (script): `SkinIslandStreakEarnEnabled` (true, per earn check).
 - Lab 2.2: none (uniStats carries istreak).
 - IslandTags 1.7 (script, per frame): `IslandTagsStreakEnabled` (true), `IslandTagsStreakMin` (1), `IslandTagsStreakTier2` (10), `IslandTagsStreakTier3` (25), `IslandTagsStreakFlicker` (0.25 s; 0 = no flicker).
+
+## Quest Stand v1.0 release 1 (2026-11-26, plan docs/plans/QUEST_STAND_v1.0.md)
+- QuestRules 1.0: none (data POOL, SPECIALS, PTS 1/2/3).
+- QuestServer 1.0 (script): `QuestEnabled` (true), `QuestSaveEnabled` (true; false = memory only), `QuestStoreName` ("MDA_Quests_v1"), `QuestRange` (24), `QuestSaveGap` (10 s), `QuestTestDayOffset` (0). Diagnostics `QuestClaims`, `QuestEvents`, `QuestSaves`. Player `QuestState`, `QuestDay`, `QuestReady`, `QuestLastResult`, `QuestLastClaim`. RemoteFunction ReplicatedStorage.QuestRequest ("state" / "claim", id).
+- QuestStandServer 1.0 (script): `QuestStandEnabled` (true), `QuestStandAngle` (unset = mirrored), `QuestStandRange` (24). Model attributes `QuestStandFront`, `QuestStandRange`. Diagnostics `QuestStandState`, `QuestStandAngleUsed`.
+- QuestStandClient 1.0 (script): `QuestStandClientEnabled` (true), `QuestStandPromptKey` ("E"), `QuestStandPromptPad` ("ButtonX"), `QuestStandPromptUp` (7), `QuestStandPromptW` (190), `QuestStandPromptH` (52). Player `QuestStandNear` (client).
+- QuestScreen 1.0 (script): `QuestScreenEnabled` (true), `QuestPanelW` (900), `QuestPanelH` (520), `QuestFitW` (0.92), `QuestFitH` (0.92), `QuestRefresh` (5 s). Player `QuestOpen`, `QuestOpenFrom`.
+- UniversalSkins 1.5: module flag `US.STAND_CLAIMS` (true). SkinServer 1.7: `SkinStandClaimsEnabled` (true); BindableFunction `SkinGrant`; diagnostic `SkinQuestGrants`.

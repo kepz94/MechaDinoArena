@@ -58,10 +58,10 @@ local ok, err = pcall(function()
 	m.Name = "QuestStand"
 	for k in pairs(m:GetAttributes()) do m:SetAttribute(k, nil) end
 	local BLUE, CYAN = Color3.fromRGB(47, 143, 216), Color3.fromRGB(127, 233, 255)
-	local ORANGE, YELLOW = BrickColor.new("Deep orange"), BrickColor.new("Bright yellow")
 	for _, d in ipairs(m:GetDescendants()) do
 		if d:IsA("BasePart") and (d.Name == "Roof" or d.Name == "Valance") then
-			if d.BrickColor == ORANGE then d.Color = BLUE elseif d.BrickColor == YELLOW then d.Color = CYAN end
+			local col = d.Color -- the shop's orange rgb(255,122,26) -> blue, yellow rgb(255,200,50) -> cyan
+			if col.R > 0.8 and col.G < 0.6 then d.Color = BLUE elseif col.R > 0.8 and col.G >= 0.6 then d.Color = CYAN end
 		elseif d:IsA("TextLabel") and d.Text == "SHOP" then
 			d.Text = "QUESTS"
 			d.TextColor3 = CYAN

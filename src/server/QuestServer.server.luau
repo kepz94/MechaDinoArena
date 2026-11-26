@@ -260,7 +260,7 @@ local function hookCharacter(player, c)
 		local was = last[name]
 		last[name] = v
 		if name == "DashCount" then
-			if was and v > was then add(player, "part", 1) end
+			if v > (was or 0) then add(player, "part", 1) end -- the first dash sets DashCount from nothing to 1
 		elseif name:sub(-7) == "ReadyAt" and (was == nil or v > was) and v > workspace:GetServerTimeNow() + 0.05 then
 			add(player, "part", 1)
 		end
