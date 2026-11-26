@@ -69,3 +69,5 @@ window as before.
 - 20:24 Kepu: "Just remove this one totally" / "Looks ass." MECHA BATTLES dropped from the front page: deleted from
   docs/front_page_v1.0 and from C:\Users\Kepu_\Videos\MechaDinoArena_FrontPage. Final set: icon_512 / icon_1024 (V1 + NAME),
   thumb_1_pick_your_dino, thumb_2_mecha_parts, thumb_4_skins_and_trails (3 thumbnails, inside Roblox's 2-5 active range).
+- 20:27 Kepu: "For the title let's go with number 3" = "[NEW] Mecha Dino Arena". Not applied to the live game: Kepu sets the
+  name on the game's settings page (or says "Publish").

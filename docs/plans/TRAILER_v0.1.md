@@ -178,3 +178,19 @@ Automatic, Output + Asset Manager back, window snapped left.
 Kepu 19:15: "This is perfect. This is our official trailer." Official = Trailer v0.7, C:\Users\Kepu_\Videos\
 MechaDinoArena_Trailer_v0.7.mp4 (29.7 s, 1920x1080 30 fps, silent). Audio not added yet. Not uploaded to the game page
 (Kepu uploads).
+
+## Trailer v0.8 cut (2026-11-25 20:40)
+
+Kepu 20:26: better cinematic angles for the Raptor's Thrusters dash into battle, a camera swing to a front-ish view; v0.7 only
+showed the fire from behind. Change: the v0.7 hop shot (p4h, 2.8 s) is replaced by a swing shot of the same length; every
+other shot is unchanged. 29.7 s, silent, C:\Users\Kepu_\Videos\MechaDinoArena_Trailer_v0.8.mp4 (not in the repo).
+Shot: real dash (DinoDashRequest) from (-5, 178) facing -Z. Measured flight: airborne ~1.0 s, ground at z 72 to -22, stops at
+about (-9, -22) after 2.0 s. Camera orbits the Torso centre (average of the Torso BaseParts), looks 40% of the way to the Head
+centre, distance 18 to 18, height 3 to 2, FOV 55, yaw from 25 deg (behind-right) to 150 deg (front 3/4) with smoothstep from
+1.0 s to 2.5 s after the take starts (dash fires at 0.8 s), spring half-life 0.04 s. Camera pulls in front of any solid part
+or bot between it and the Raptor. Pick: recording 20-38-17, take 5, 22.25 s to 25.05 s: side flight with the rainbow trail
+over the battle, swing to the front on landing, crowd behind. Takes 1-4 dropped (camera clipped through bots, dull skin
+phase, target ring overhead, shield dome lines).
+Filming-only (Play session): crowd director pairs 5, 7 and 10 moved off the landing path to (-42, 52), (32, 22), (-50, -30);
+player kept at full health (DummyHealth, StatDamageTakenMul 0) by a server loop. Restored after: Raptor slots empty, Play
+stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false (checked), Output + Asset Manager back, window snapped left.
