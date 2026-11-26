@@ -22,6 +22,10 @@ M.EXCLUDE = {skin = {zebra = true, storm = true}} -- the Quest Stand specials (r
 M.VERSION = "1.1" -- v1.1 (Kepu 2026-11-26 16:14 on mockup docs/mockups/skin_drop_v0.1.html: "A1-a3 should be free as well as the holiday ones" / "They're the ones to earn" / 16:15 "Okay let's build"; earn goals and the rest of the lineup: standing pick, recommended): the December holiday skins (UniversalSkins 1.6) are never Favorite Egg prizes, so they stay
 -- earn-only in their window. Switch: M.EXCLUDE_HOLIDAY (true; false = 1.0).
 M.EXCLUDE_HOLIDAY = true
+M.VERSION = "1.2" -- v1.2 (Kepu 2026-11-26 16:31 "play time rewards ... skill points and a skin the longer you play in a session"; mockup docs/mockups/playtime_rewards_v0.1.html, 16:35 pick "A"; skin Overtime: standing pick, recommended): Overtime (UniversalSkins 1.7, the 60 min playtime reward) is never an egg prize.
+-- Switch: M.EXCLUDE_PLAYTIME (true; false = 1.1).
+M.EXCLUDE_PLAYTIME = true
+if M.EXCLUDE_PLAYTIME then M.EXCLUDE.skin.overtime = true end
 if M.EXCLUDE_HOLIDAY then
 	for _, id in ipairs({"gingerbread", "candycane", "frostbite", "holidaylights"}) do M.EXCLUDE.skin[id] = true end
 end
