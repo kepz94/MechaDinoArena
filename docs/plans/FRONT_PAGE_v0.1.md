@@ -66,3 +66,6 @@ window as before.
   (LocalTransparencyModifier 1, Play session), Raptor turned so the ball leaves past the camera on the left; frame 3.50 s:
   one ball clear of the head, face and cannon visible. Built with tools/frontpage/t3build.py (keeps the two largest
   cut-out pieces: the Raptor and the ball). A cyan re-tint of the ball was tried and dropped (it flattened the glow).
+- 20:24 Kepu: "Just remove this one totally" / "Looks ass." MECHA BATTLES dropped from the front page: deleted from
+  docs/front_page_v1.0 and from C:\Users\Kepu_\Videos\MechaDinoArena_FrontPage. Final set: icon_512 / icon_1024 (V1 + NAME),
+  thumb_1_pick_your_dino, thumb_2_mecha_parts, thumb_4_skins_and_trails (3 thumbnails, inside Roblox's 2-5 active range).
