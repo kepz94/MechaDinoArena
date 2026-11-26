@@ -19,6 +19,12 @@ M.TIERS = {"common", "rare", "epic", "legend", "dino"}
 M.ODDS = {common = 60, rare = 30, epic = 5, legend = 2, dino = 3}
 M.TIER_NAME = {common = "COMMON", rare = "RARE", epic = "EPIC", legend = "LEGENDARY", dino = "DINO"}
 M.EXCLUDE = {skin = {zebra = true, storm = true}} -- the Quest Stand specials (red-team R4)
+M.VERSION = "1.1" -- v1.1 (Kepu 2026-11-26 16:14 on mockup docs/mockups/skin_drop_v0.1.html: "A1-a3 should be free as well as the holiday ones" / "They're the ones to earn" / 16:15 "Okay let's build"; earn goals and the rest of the lineup: standing pick, recommended): the December holiday skins (UniversalSkins 1.6) are never Favorite Egg prizes, so they stay
+-- earn-only in their window. Switch: M.EXCLUDE_HOLIDAY (true; false = 1.0).
+M.EXCLUDE_HOLIDAY = true
+if M.EXCLUDE_HOLIDAY then
+	for _, id in ipairs({"gingerbread", "candycane", "frostbite", "holidaylights"}) do M.EXCLUDE.skin[id] = true end
+end
 M.WINDOW_H = 48
 M.ALL_OWNED_POINTS = 10
 local RAR = {RARE = "rare", EPIC = "epic", LEGENDARY = "legend"}
