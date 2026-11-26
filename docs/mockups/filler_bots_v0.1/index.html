@@ -1,0 +1,229 @@
+<title>Filler Bots v0.1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Mockup of filler bots: one page, variant switcher on top, four game surfaces below. Colours are the game's own (PregameScreen / HardpointHUD palette). */
+:root{
+  --ink:#0d1218; --panel:#151d27; --panel2:#1b2532; --line:#263243; --text:#e7edf5; --muted:#93a2b6;
+  --blue:#5aa0ff; --red:#e0284a; --yellow:#ffc832; --green:#46e08a; --pink:#ff6b84; --slate:#3a4656; --botgrey:#8f99aa;
+  --gold:#ffd25a; --display:"Silkscreen","Courier New",monospace; --body:"Inter",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+body{background:#080b10;color:var(--text);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+h1,h2,h3{font-family:var(--display);font-weight:700;margin:0;letter-spacing:.03em;text-wrap:balance}
+h1{font-size:clamp(22px,3.4vw,32px);color:var(--yellow)}
+h2{font-size:18px}
+h3{font-size:13px;color:var(--muted)}
+p{margin:0}
+.lead{color:var(--muted);max-width:75ch}
+.switch{display:flex;flex-wrap:wrap;gap:8px;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:#080b10;padding-block:10px}
+.switch button{font-family:var(--display);font-size:13px;letter-spacing:.04em;background:var(--panel);color:var(--text);border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+.switch button[aria-pressed="true"]{background:var(--yellow);color:#1b1405;border-color:var(--yellow)}
+.switch button:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0}
+.opt{display:grid;gap:6px}
+.opt b{font-family:var(--display);font-size:14px;color:var(--yellow)}
+.trade{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.trade div{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px}
+.trade h3{margin-bottom:4px}
+.rec{font-family:var(--display);font-size:11px;background:var(--green);color:#06210f;border-radius:4px;padding:1px 6px;margin-left:6px}
+
+/* hub view */
+.hub{position:relative;border-radius:10px;overflow:hidden;aspect-ratio:16/9;max-width:100%;background:#9cc4e8}
+.hub img{width:100%;height:100%;object-fit:cover;display:block}
+.tag{position:absolute;transform:translate(-50%,-100%);display:grid;justify-items:center;gap:2px;pointer-events:none;transition:opacity .35s}
+.tag .nm{font-family:var(--display);font-weight:700;color:#fff;font-size:clamp(9px,1.5vw,15px);-webkit-text-stroke:.6px #000;text-shadow:0 1px 0 #000,0 0 3px #000;white-space:nowrap}
+.tag .bar{width:clamp(48px,8vw,96px);height:clamp(5px,.8vw,9px);border-radius:9px;background:var(--red);border:1.5px solid #0b0f14;overflow:hidden}
+.tag .bar i{display:block;height:100%;background:var(--green)}
+.tag .wl{font-family:var(--display);font-weight:700;font-size:clamp(8px,1.1vw,12px);-webkit-text-stroke:.4px #000;text-shadow:0 1px 0 #000;display:flex;gap:6px}
+.tag .wl .w{color:var(--green)} .tag .wl .l{color:var(--pink)}
+.tag .bt{font-family:var(--display);font-size:clamp(7px,1vw,10px);color:var(--botgrey);-webkit-text-stroke:.3px #000}
+.tag.gone{opacity:0}
+.hudpill{position:absolute;left:12px;top:12px;font-family:var(--display);font-size:clamp(9px,1.2vw,12px);background:rgba(13,18,24,.82);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.ctl label{font-weight:600}
+.ctl input[type=range]{flex:1;min-width:180px;accent-color:var(--yellow)}
+.ctl output{font-family:var(--display);color:var(--yellow);min-width:2ch}
+.roster{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.roster div{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13px;display:flex;justify-content:space-between;gap:8px;min-width:0}
+.roster .who{font-family:var(--display);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roster .k{color:var(--muted);font-size:12px;white-space:nowrap}
+.roster .k.real{color:var(--blue)} .roster .k.bot{color:var(--yellow)} .roster .k.left{color:var(--slate)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+
+/* lineup */
+.lineup{display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:start}
+.side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.vs{font-family:var(--display);font-size:20px;color:var(--muted);align-self:center}
+.plq{background:#111821;border:1.5px solid var(--line);border-radius:8px;padding:8px;display:grid;gap:3px;min-width:0}
+.plq.blue{border-top:4px solid var(--blue)} .plq.red{border-top:4px solid var(--red)}
+.plq .nm{font-family:var(--display);font-weight:700;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.plq .rec2{font-family:var(--display);font-size:12px}
+.plq .rec2 .w{color:var(--green)} .plq .rec2 .l{color:var(--pink)}
+.plq .bot{font-family:var(--display);font-size:11px;color:var(--botgrey)}
+.plq .dn{font-size:12px;color:#c9d4e2}
+.plq .skin{font-size:11px;color:var(--muted)}
+.plq.you{box-shadow:0 0 0 2px var(--yellow) inset}
+
+/* scoreboard + feed */
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:330px}
+th{font-family:var(--display);font-size:11px;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+td{padding:6px 8px;border-bottom:1px solid #1c2633;white-space:nowrap}
+td.n{font-family:var(--display);font-size:12px}
+.tb{font-family:var(--display);font-size:10px;color:var(--botgrey);margin-left:6px}
+.ai{font-family:var(--display);font-size:10px;color:#1b1405;background:var(--muted);border-radius:4px;padding:0 5px;margin-left:6px}
+tr.A td:first-child{border-left:3px solid var(--blue)} tr.B td:first-child{border-left:3px solid var(--red)}
+.feed{background:rgba(13,18,24,.9);border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:6px;font-size:13px;align-content:start}
+.feed div{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.feed .a{color:var(--blue);font-family:var(--display);font-size:12px} .feed .b{color:var(--red);font-family:var(--display);font-size:12px}
+.feed .how{background:#dfe6ee;color:#0d1218;border-radius:4px;padding:0 6px;font-size:11px;font-weight:600}
+.persona{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.persona div{background:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13.5px}
+.persona h3{margin-bottom:4px}
+.note{font-size:13px;color:var(--muted)}
+.hide{display:none!important}
+@media (max-width:640px){.lineup{grid-template-columns:1fr}.vs{justify-self:center}}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>FILLER BOTS · OPTIONS v0.1</h1>
+    <p class="lead">Your picks so far: the island fills to 8 dinos, filler bots fight players too, Arena matches fill to 4v4, and each bot has a made-up W-L that stays the same. The only open question is <b>how much a bot looks like a player</b> in each place. Switch between the three options below. The VS BOTS portal match is not part of this; it keeps its BOT tags in all three.</p>
+  </header>
+
+  <nav class="switch" aria-label="Option">
+    <button type="button" data-v="A" aria-pressed="true">A · FULL DISGUISE</button>
+    <button type="button" data-v="B" aria-pressed="false">B · ISLAND ONLY</button>
+    <button type="button" data-v="C" aria-pressed="false">C · REVEAL AT RESULTS</button>
+  </nav>
+
+  <section class="card">
+    <div class="opt" id="optA"><b>A · Full disguise <span class="rec">RECOMMENDED</span></b><p>On the island and in Arena matches, bots look exactly like players: player-style names, W-L, skins, trails, parts, emotes. There is no BOT tag anywhere except in the VS BOTS match.</p></div>
+    <div class="opt hide" id="optB"><b>B · Island only</b><p>Island bots look like players. In Arena matches the filler bots get the same names, skins and parts, but the lineup, scoreboard and kill feed keep the BOT tag, as they do today.</p></div>
+    <div class="opt hide" id="optC"><b>C · Reveal at results</b><p>During the match it works like A, with no tags. On the results screen after an Arena match, each bot gets a small AI tag, so players find out afterwards who was real.</p></div>
+    <div class="trade">
+      <div><h3>BEST FOR</h3><p id="good">The first players never feel alone. Island and matches both feel full.</p></div>
+      <div><h3>COST</h3><p id="cost">A player can think they beat real people. Their own W-L only counts when a real player is on each team, which is the rule today.</p></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>1 · HUB ISLAND</h2>
+    <p class="note">The island always feels like 8 dinos. Each time a real player joins, one bot walks into the ARENA portal and leaves, so it looks like they went into a match. When a player leaves, a new bot spawns on the islet after a short wait. Bots fight each other and anyone outside the safe area, use their real abilities, and emote now and then.</p>
+    <div class="hub">
+      <img src="hub.jpg" alt="The island: a lava Raptor in front, other dinos fighting behind it">
+      <div class="hudpill" id="hubpill">8 DINOS ON THE ISLAND</div>
+      <div id="tags"></div>
+    </div>
+    <div class="ctl">
+      <label for="pl">Real players on this server</label>
+      <input type="range" id="pl" min="1" max="10" value="1">
+      <output id="plv" for="pl">1</output>
+    </div>
+    <label class="toggle"><input type="checkbox" id="dev"> Show who is a bot (only you see this, in this mockup)</label>
+    <div class="roster" id="roster"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · ARENA LINEUP 4V4</h2>
+    <p class="note">You queued alone and 30 s passed, so bots fill the other 7 slots (the 4v4 fill rule from 12 Nov). Today their plaques say "ELITE BOT" or "HARD BOT".</p>
+    <div class="lineup">
+      <div class="side" id="sideA"></div>
+      <div class="vs">VS</div>
+      <div class="side" id="sideB"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3 · IN THE MATCH</h2>
+    <div class="split">
+      <div class="tbl-wrap"><table><thead><tr><th>NAME</th><th>DINO</th><th>K</th><th>D</th><th>POINT</th></tr></thead><tbody id="board"></tbody></table></div>
+      <div class="feed" id="feed"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>4 · RESULTS</h2>
+    <div class="tbl-wrap"><table><thead><tr><th>NAME</th><th>DINO</th><th>K</th><th>D</th><th>XP</th></tr></thead><tbody id="results"></tbody></table></div>
+    <p class="note" id="resnote">There is no change here in A.</p>
+  </section>
+
+  <section class="card">
+    <h2>WHAT EVERY FILLER BOT GETS (ALL OPTIONS)</h2>
+    <div class="persona">
+      <div><h3>NAME</h3><p>A Roblox-style name made from dino words and numbers (RaptorRush_27, MossyClaw, teno_main). It is unique on the server and kept the whole time the bot is there.</p></div>
+      <div><h3>RECORD</h3><p>A made-up W-L worked out from the name, so the same name always shows the same record. It is never written to the save and never appears on the worldwide leaderboard. The island tag shows it like a player's.</p></div>
+      <div><h3>LOOK</h3><p>A random owned-style skin and trail for its dino, and 4 mecha parts from the parts that work for bots.</p></div>
+      <div><h3>HABITS</h3><p>Fights with real abilities. Emotes after a kill and while idle in the safe area. No rank badge, since it isn't on the leaderboard.</p></div>
+    </div>
+  </section>
+</div>
+
+<script>
+var V='A';
+var PEOPLE=[
+ {n:'YOU',real:true,w:3,l:2,x:57,y:27,dino:'Raptor'},
+ {n:'MOSSYCLAW',w:41,l:33,x:13,y:37,dino:'Dilo'},
+ {n:'RAPTORRUSH_27',w:12,l:15,x:89,y:52,dino:'Pachy'},
+ {n:'TENO_MAIN',w:88,l:61,x:80,y:43,dino:'Teno'},
+ {n:'BIGPACHYENERGY',w:7,l:9,x:33,y:40,dino:'Therizino'},
+ {n:'ZAPPY_HERRERA',w:23,l:30,x:70,y:37,dino:'Herrera'},
+ {n:'TROODONTOM',w:15,l:4,x:5,y:44,dino:'Troodon'},
+ {n:'DILO2FAST',w:54,l:58,x:96,y:40,dino:'Dilo'}
+];
+var JOIN=['KAYLA_RAWR','JDOG2013','MIKEYGAMES','SAMI_X','LUCASB','NINA22','OWENPLAYS','ZOEYK','BENJI','ALEXR'];
+function tagHTML(p,dev){
+  var t=p.w+p.l, f=t?Math.round(p.w/t*100):0;
+  var nm=p.n+((dev&&!p.real)?' ·BOT':'');
+  return '<span class="nm">'+nm+'</span><span class="bar"><i style="width:'+f+'%"></i></span><span class="wl"><span class="w">'+p.w+'W</span><span class="l">'+p.l+'L</span></span>';
+}
+function drawHub(){
+  var players=+document.getElementById('pl').value; document.getElementById('plv').textContent=players;
+  var dev=document.getElementById('dev').checked;
+  var bots=Math.max(0,8-players);
+  var tags='',ros='';
+  var botList=PEOPLE.slice(1);
+  var realOthers=players-1;
+  ros+='<div><span class="who">YOU</span><span class="k real">'+(dev?'REAL':'3W 2L')+'</span></div>';
+  for(var i=0;i<realOthers;i++){ros+='<div><span class="who">'+JOIN[i]+'</span><span class="k real">'+(dev?'REAL · JUST JOINED':'0W 0L')+'</span></div>';}
+  botList.forEach(function(p,i){
+    var here=i<bots;
+    if(here){ros+='<div><span class="who">'+p.n+'</span><span class="k '+(dev?'bot':'')+'">'+(dev?'BOT':p.w+'W '+p.l+'L')+'</span></div>';}
+    else if(dev){ros+='<div><span class="who">'+p.n+'</span><span class="k left">LEFT · ARENA PORTAL</span></div>';}
+  });
+  PEOPLE.forEach(function(p,i){
+    var here=p.real||i-1<bots;
+    tags+='<div class="tag'+(here?'':' gone')+'" style="left:'+p.x+'%;top:'+p.y+'%">'+tagHTML(p,dev)+'</div>';
+  });
+  document.getElementById('tags').innerHTML=tags;
+  document.getElementById('roster').innerHTML=ros;
+  var total=players+bots;
+  document.getElementById('hubpill').textContent=total+' DINOS ON THE ISLAND';
+}
+var LA=[{n:'YOU',real:true,w:3,l:2,d:'Raptor',s:'Lava'},{n:'MOSSYCLAW',w:41,l:33,d:'Dilo',s:'Toxic',t:'ELITE'},{n:'TROODONTOM',w:15,l:4,d:'Troodon',s:'Night',t:'HARD'},{n:'SK3TCHYREX',w:30,l:27,d:'Therizino',s:'Prism',t:'HARD'}];
+var LB=[{n:'TENO_MAIN',w:88,l:61,d:'Teno',s:'Classic',t:'ELITE'},{n:'ZAPPY_HERRERA',w:23,l:30,d:'Herrera',s:'Ember',t:'ELITE'},{n:'BIGPACHYENERGY',w:7,l:9,d:'Pachy',s:'Lava',t:'HARD'},{n:'DILO2FAST',w:54,l:58,d:'Dilo',s:'Classic',t:'HARD'}];
+function plq(p,cls){
+  var showBot=(V==='B')&&!p.real;
+  var rec=showBot?'<span class="bot">'+p.t+' BOT</span>':'<span class="rec2"><span class="w">'+p.w+'W</span> <span class="l">'+p.l+'L</span></span>';
+  return '<div class="plq '+cls+(p.real?' you':'')+'"><span class="nm">'+p.n+'</span>'+rec+'<span class="dn">'+p.d+'</span><span class="skin">'+p.s+' skin</span></div>';
+}
+function drawLineup(){document.getElementById('sideA').innerHTML=LA.map(function(p){return plq(p,'blue')}).join('');document.getElementById('sideB').innerHTML=LB.map(function(p){return plq(p,'red')}).join('');}
+var BOARD=[['YOU','A','Raptor',6,3,'1:12',true],['TENO_MAIN','B','Teno',5,4,'1:40'],['MOSSYCLAW','A','Dilo',4,2,'0:55'],['ZAPPY_HERRERA','B','Herrera',3,5,'0:20'],['TROODONTOM','A','Troodon',3,3,'0:48'],['DILO2FAST','B','Dilo',2,4,'0:31'],['SK3TCHYREX','A','Therizino',1,2,'1:05'],['BIGPACHYENERGY','B','Pachy',1,5,'0:44']];
+function drawBoard(){
+  document.getElementById('board').innerHTML=BOARD.map(function(r){var bot=!r[6];var t=(V==='B'&&bot)?'<span class="tb">BOT</span>':'';return '<tr class="'+r[1]+'"><td class="n">'+(r[6]?'★ ':'')+r[0]+t+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td>'+r[4]+'</td><td>'+r[5]+'</td></tr>'}).join('');
+  var lines=[['YOU','a','SHOCK CANNON','TENO_MAIN','b',true,false],['TENO_MAIN','b','TAIL SLAM','MOSSYCLAW','a',false,false],['TROODONTOM','a','','DILO2FAST','b',false,false]];
+  document.getElementById('feed').innerHTML='<h3>KILL FEED</h3>'+lines.map(function(l){var tg=function(isReal){return (V==='B'&&!isReal)?'<span class="tb">BOT</span>':''};return '<div><span class="'+l[1]+'">'+l[0]+'</span>'+tg(l[5])+(l[2]?'<span class="how">'+l[2]+'</span>':'')+'<span class="'+l[4]+'">'+l[3]+'</span>'+tg(l[6])+'</div>'}).join('');
+  document.getElementById('results').innerHTML=BOARD.map(function(r){var bot=!r[6];var t=(V==='B'&&bot)?'<span class="tb">BOT</span>':(V==='C'&&bot?'<span class="ai">AI</span>':'');return '<tr class="'+r[1]+'"><td class="n">'+(r[6]?'★ ':'')+r[0]+t+'</td><td>'+r[2]+'</td><td>'+r[3]+'</td><td>'+r[4]+'</td><td>'+(r[6]?'+320':'—')+'</td></tr>'}).join('');
+  document.getElementById('resnote').textContent=V==='A'?'There is no change here in A.':(V==='B'?'In B, bots keep the BOT tag here as well.':'In C, this is the only place bots are named as AI, and only after the match.');
+}
+var TXT={A:['The first players never feel alone. Island and matches both feel full.','A player can think they beat real people. Their own W-L only counts when a real player is on each team, which is the rule today.'],
+B:['Honest where it matters most: Arena results and W-L. The island still feels busy.','An Arena match with 7 bots will look like a bots match, and a solo queue feels empty sooner.'],
+C:['Matches feel full while you play, and players learn the truth at the end.','The reveal can make a win feel smaller, and it tells players the game is quiet.']};
+function setV(v){V=v;document.querySelectorAll('.switch button').forEach(function(b){b.setAttribute('aria-pressed',b.dataset.v===v)});['A','B','C'].forEach(function(k){document.getElementById('opt'+k).classList.toggle('hide',k!==v)});document.getElementById('good').textContent=TXT[v][0];document.getElementById('cost').textContent=TXT[v][1];drawLineup();drawBoard();drawHub();}
+document.querySelectorAll('.switch button').forEach(function(b){b.addEventListener('click',function(){setV(b.dataset.v)})});
+document.getElementById('pl').addEventListener('input',drawHub);document.getElementById('dev').addEventListener('change',drawHub);
+setV('A');
+</script>
