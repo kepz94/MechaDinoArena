@@ -26,3 +26,22 @@ Workspace.CINE_Lineup (scripts removed, anchored; the T-Rex is a StarterCharacte
 about 62 studs). Account: Raptor slots set to adrenaline / screech / thrusters for the shots, cleared after. Restored: Play
 stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false, panels and window as before.
 Waiting on Kepu's picks. Final files (1920x1080 / 512x512) are rendered from the same frames once picked; upload is Kepu's.
+
+## Mockup v0.2 (2026-11-25 19:58)
+Kepu 19:35: "Looks trash"; 19:38: "Everything other than T2 and T4 is straight ass. You're not following the rules for how to
+market a game / key things to have in an icon."
+Rules applied (sources: Roblox game icons + thumbnails docs; rowatcher.com "Your Roblox Game Icon Is Losing You Players";
+supersonic.com icon A/B tests): one dominant subject filling the frame on a clean high-contrast background; clear emotion
+and action; the fantasy in one look; works as an ad, not a screenshot; warm colours stand out from Roblox's cool UI; no title
+text on the icon (A/B: removing text and enlarging the character +10%); heavier outline (+7%); judge at 150 px.
+Method: Studio green screen. A magenta box (Workspace.CINE_Stage at 600, 300, 600, Play only) behind the dinos; the Lava
+Raptor's jaw held open locally (Jaw Motor6D Transform, client only, as in the bite pose); showcase dinos are anchored copies
+of practice bots in Workspace.CINE_Show; recording 19-40-18. tools/frontpage/key.py keys out the magenta (min(r,b) - g,
+greys kept) with despill; tools/frontpage/comp.py builds the sunburst backgrounds, the white + dark outline with glow, and
+the 3D title text (gold gradient, dark extrusion, shadow).
+- Icons: V1 roaring Raptor + charged Shock Cannon on a blue burst; V2 the same on an orange burst; V1 + NAME (shown only
+  because Kepu asked to see both).
+- Thumbnails: T1 PICK YOUR DINO (6 cutouts on an orange burst), T2 MECHA PARTS (kept), T3 MECHA BATTLES (Raptor fires on
+  the Pachy, blue burst), T4 SKINS & TRAILS (kept). T2 / T4 get the new 3D title text. Old T3 / T5 dropped.
+- Description: "and emotes" removed from the Shop line (not confirmed that emotes are sold there).
+Restored: Play stopped, ModeTestPractice nil, SkillTestMaxAllEnabled false, Raptor slots empty, panels and window as before.
