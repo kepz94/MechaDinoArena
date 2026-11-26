@@ -3675,3 +3675,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TutorialRules 1.3: none (pure module; data PASSIVES, JUMP_PARTS).
 - Tutorial 1.7 (script, read per draw unless noted): `TutorialWelcomeEnabled` (true), `TutorialRosterTitleEnabled` (true), `TutorialRosterPassiveEnabled` (true), `TutorialRevealPassiveEnabled` (true), `TutorialJumpPartsEnabled` (true, per draw and per character attribute change), `TutJumpPartSkipAfter` (20 s). Script-global table `WM` (welcomed, jpN, jpSince, jpTapAt, jpTok, markUsed).
 - Tutorial 1.7.1 (script, read per draw): `TutorialRevealFitEnabled` (true), `TutRevealFov` (44, the reveal's dino camera FOV).
+- KillFeed 1.5 (script, per frame): `KillFeedHideOnMenuEnabled` (true). EggLoader 1.8 (script, per build): `EggLoaderBabyFrontEnabled` (true).

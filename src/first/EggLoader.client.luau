@@ -124,6 +124,11 @@ VERSION = "1.4" -- v1.4 match briefing only on match screens
 VERSION = "1.5" -- v1.5 the egg on every non-match load
 VERSION = "1.6" -- v1.6 how to win only
 VERSION = "1.7" -- v1.7 the tutorial takes over from the join egg
+VERSION = "1.8" -- v1.8 the baby has one mouth
+-- v1.8 (Kepu 2026-11-26 03:27 "the loading screen baby Dino has two mouths one on the front and teeth on the side"): the baby's face
+--   looks forward (two eyes, two blush spots, the smile in the middle), but the 1.0 drawing also kept a side snout from the
+--   mockup's profile (unit rects 100,40 28x28 snout, 104,60 24x8 jaw, 112,64 and 120,64 4x4 teeth). Those 4 are no longer drawn.
+--   Switch: script attribute EggLoaderBabyFrontEnabled (default true, read per build; false = 1.7).
 local ARRIVE_FLOOR = 0.5 -- v1.2
 local MIN_CRACK = 3
 local TIMEOUT = 45
@@ -676,7 +681,12 @@ local function build(mode, target)
 		{100, 40, 28, 28, G}, {104, 60, 24, 8, D}, {112, 64, 4, 4, Wt}, {120, 64, 4, 4, Wt},
 		{40, 54, 10, 6, P}, {98, 54, 10, 6, P}, {64, 58, 4, 4, K}, {68, 62, 12, 4, K}, {80, 58, 4, 4, K},
 		{26, 70, 16, 8, G}, {102, 70, 16, 8, G}, {22, 74, 8, 6, D}, {114, 74, 8, 6, D},
-	}) do unitRect(bb, t[1], t[2], t[3], t[4], t[5]) end
+	}) do
+		if not (script:GetAttribute("EggLoaderBabyFrontEnabled") ~= false and ({["100,40"] = true, ["104,60"] = true, ["112,64"] = true,
+			["120,64"] = true})[t[1] .. "," .. t[2]]) then -- v1.8: no side snout / jaw / teeth
+			unitRect(bb, t[1], t[2], t[3], t[4], t[5])
+		end
+	end
 	s.eyes = {}
 	for _, ex in ipairs({48, 84}) do
 		local eye = unitRect(bb, ex, 28, 20, 24, K, "Eye")

@@ -35,6 +35,12 @@ local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 phone HUD v2: lines top-right
 VERSION = "1.3" -- v1.3 rank badge
 VERSION = "1.4" -- v1.4 filler bot personas: no BOT tag
+VERSION = "1.5" -- v1.5 hidden while the phone menu drawer is open
+-- v1.5 (Kepu 2026-11-26 03:27 "When I press the menu button top right, I can't see anything because it's hidden behind kill feed"):
+--   on phone HUD v2 the lines sit right under the ☰ (v1.2), the same spot as the drawer's MENU / SKILLS / camera / SQUAD buttons
+--   (PhoneMenu 1.0 PhoneMenuY_*), all in DisplayOrder 6 guis. While the player attribute PhoneMenuOpen is true the kill feed
+--   (lines and banner) is hidden; it shows again when the drawer closes. Switch: script attribute KillFeedHideOnMenuEnabled
+--   (default true, read per frame; false = 1.4).
 -- v1.3 (leaderboards, Kepu 2026-11-24 15:44 pick "Kill feed"; badge look A, font 2 Builder Sans, mockup
 --   docs/mockups/rank_badge_fonts_v0.2.html): on a line, a killer / victim who is a player on this server (kBot / vBot not true,
 --   Players:GetPlayerByUserId(kId / vId)) with a worldwide rank (RankBadge 1.0 rankOf) gets the rank badge just before the
@@ -282,6 +288,7 @@ RunService.RenderStepped:Connect(function()
 	local m = mode()
 	script:SetAttribute("KillFeedMode", m == PHONE and "phone" or "pc")
 	gui.Enabled = script:GetAttribute("KillFeedEnabled") ~= false and player:GetAttribute("InMenu") ~= true
+		and not (script:GetAttribute("KillFeedHideOnMenuEnabled") ~= false and player:GetAttribute("PhoneMenuOpen") == true) -- v1.5
 	scale.Scale = m.scale
 	-- place under the HardpointHUD's card / pills
 	local y = FALLBACK_Y
