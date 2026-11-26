@@ -28,6 +28,11 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 TrailGrant
+-- v1.1 (Favorite Egg, plan docs/plans/FAVORITE_EGG_v1.0.md Task 2, MDA-608): server-only BindableFunction TrailGrant (child of this
+--   script): Invoke(player, id, reason) -> "ok" (written to owned with one UpdateAsync, TrailUnlocked set) / "owned" / "unknown" /
+--   "notLoaded" / "failed" / "disabled". Buying and receipts are not touched. Switch: script attribute TrailGrantEnabled (true, read
+--   per call). Diagnostic: TrailGrants.
 local STORE = "MDA_Trails_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local INTENT_TTL = 600
@@ -285,6 +290,35 @@ hook.OnInvoke = function(kind, a, b)
 	end
 end
 hook.Parent = ServerStorage
+-- v1.1: TrailGrant (see the v1.1 note)
+if script:GetAttribute("TrailGrantEnabled") == nil then script:SetAttribute("TrailGrantEnabled", true) end
+do
+	local grantFn = script:FindFirstChild("TrailGrant") or Instance.new("BindableFunction")
+	grantFn.Name = "TrailGrant"
+	grantFn.Parent = script
+	grantFn.OnInvoke = function(player, id, reason)
+		if script:GetAttribute("TrailGrantEnabled") == false then return "disabled" end
+		if typeof(player) ~= "Instance" or not player:IsA("Player") or type(id) ~= "string" or not TC.get(id) then return "unknown" end
+		local st = states[player]
+		if not (st and st.loaded and store) then return "notLoaded" end
+		if st.owned[id] == true then return "owned" end
+		local ok, value = pcall(function()
+			return store:UpdateAsync("u" .. player.UserId, function(old)
+				local v = blank(old)
+				v.owned[id] = true
+				return v
+			end)
+		end)
+		if not (ok and player.Parent) then return "failed" end
+		if type(value) == "table" and type(value.owned) == "table" then st.owned = value.owned end
+		st.owned[id] = true
+		bump("TrailGrants")
+		player:SetAttribute("TrailUnlocked", id)
+		publish(player)
+		setResult(player, "granted")
+		return "ok"
+	end
+end
 
 MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, _, isPurchased)
 	local player = Players:GetPlayerByUserId(userId)

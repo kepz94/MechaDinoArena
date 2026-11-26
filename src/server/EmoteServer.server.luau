@@ -28,6 +28,11 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 EmoteGrant
+-- v1.1 (Favorite Egg, plan docs/plans/FAVORITE_EGG_v1.0.md Task 2, MDA-608): server-only BindableFunction EmoteGrant (child of this
+--   script): Invoke(player, id, reason) -> "ok" (written to owned with one UpdateAsync, wheel filled, EmoteUnlocked set) / "owned" /
+--   "unknown" / "notLoaded" / "failed" / "disabled". Buying and receipts are not touched. Switch: script attribute EmoteGrantEnabled
+--   (true, read per call). Diagnostic: EmoteGrants.
 local STORE = "MDA_Emotes_v1"
 local LOAD_TRIES, LOAD_WAITS = 3, {2, 4}
 local INTENT_TTL = 600
@@ -382,6 +387,36 @@ hook.OnInvoke = function(kind, a, b)
 	end
 end
 hook.Parent = ServerStorage
+-- v1.1: EmoteGrant (see the v1.1 note)
+if script:GetAttribute("EmoteGrantEnabled") == nil then script:SetAttribute("EmoteGrantEnabled", true) end
+do
+	local grantFn = script:FindFirstChild("EmoteGrant") or Instance.new("BindableFunction")
+	grantFn.Name = "EmoteGrant"
+	grantFn.Parent = script
+	grantFn.OnInvoke = function(player, id, reason)
+		if script:GetAttribute("EmoteGrantEnabled") == false then return "disabled" end
+		if typeof(player) ~= "Instance" or not player:IsA("Player") or type(id) ~= "string" or not EC.get(id) then return "unknown" end
+		local st = states[player]
+		if not (st and st.loaded and store) then return "notLoaded" end
+		if st.owned[id] == true then return "owned" end
+		local ok, value = pcall(function()
+			return store:UpdateAsync("u" .. player.UserId, function(old)
+				local v = blank(old)
+				v.owned[id] = true
+				return v
+			end)
+		end)
+		if not (ok and player.Parent) then return "failed" end
+		if type(value) == "table" and type(value.owned) == "table" then st.owned = value.owned end
+		st.owned[id] = true
+		bump("EmoteGrants")
+		if fillWheel(player) then task.spawn(saveWheel, player) end
+		player:SetAttribute("EmoteUnlocked", id)
+		publish(player)
+		setResult(player, "granted")
+		return "ok"
+	end
+end
 
 MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, _, isPurchased)
 	local player = Players:GetPlayerByUserId(userId)

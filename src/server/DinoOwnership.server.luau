@@ -34,6 +34,14 @@ local DataStoreService = game:GetService("DataStoreService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 fresh store (account reset)
+VERSION = "1.2" -- v1.2 OwnGrant + maxed dinos
+-- v1.2 (Favorite Egg, plan docs/plans/FAVORITE_EGG_v1.0.md Task 2, MDA-608; Kepu 2026-11-26 "Owned + parts maxed"): server-only
+--   BindableFunction OwnGrant (child of this script): Invoke(player, key, maxed) -> "ok" (value.owned[key] = true, and with maxed
+--   value.maxed[key] = true; written as every other change) / "owned" (owned, and maxed when asked) / "unknown" (not one of
+--   TutorialRules.ALL_DINOS) / "notLoaded" (TutState "wait") / "notReady" (no stored value yet: "new" in the tutorial) / "allOwned"
+--   ("grand" / "off": every dino already) / "disabled". New player attribute MaxedDinos (comma list of value.maxed; SkillServer
+--   1.16 gives those dinos every mecha part like FreeDino). Switch: script attribute OwnGrantEnabled (true, read per call).
+--   Diagnostic: OwnGrants.
 if script:GetAttribute("OwnStoreName") == nil then script:SetAttribute("OwnStoreName", "MDA_Owned_v2") end
 if script:GetAttribute("OwnLastField") == nil then script:SetAttribute("OwnLastField", "lastSpecies2") end
 script:SetAttribute("OwnershipVersion", VERSION)
@@ -61,6 +69,9 @@ local function publish(player, d)
 	local owned = (d.state == "off" or d.state == "grand") and R.allOwned() or (v and v.owned) or {}
 	player:SetAttribute("OwnedDinos", R.ownedString(owned))
 	player:SetAttribute("FreeDino", v and type(v.free) == "string" and v.free or "")
+	local mx = {} -- v1.2: maxed dinos
+	if v and type(v.maxed) == "table" then for _, k in ipairs(R.ALL_DINOS) do if v.maxed[k] then table.insert(mx, k) end end end
+	player:SetAttribute("MaxedDinos", table.concat(mx, ","))
 end
 
 local function write(player, d)
@@ -166,6 +177,31 @@ fn("OwnFinishTut").OnInvoke = function(player)
 	player:SetAttribute("OwnLastResult", "finished")
 	task.spawn(write, player, d)
 	return true
+end
+
+-- v1.2: OwnGrant (see the v1.2 note)
+if script:GetAttribute("OwnGrantEnabled") == nil then script:SetAttribute("OwnGrantEnabled", true) end
+fn("OwnGrant").OnInvoke = function(player, key, maxed)
+	if script:GetAttribute("OwnGrantEnabled") == false then return "disabled" end
+	if typeof(player) ~= "Instance" or not player:IsA("Player") or type(key) ~= "string" or not table.find(R.ALL_DINOS, key) then return "unknown" end
+	local d = data[player]
+	if not d or d.state == "wait" then return "notLoaded" end
+	if d.state == "grand" or d.state == "off" then return "allOwned" end
+	if not d.value then return "notReady" end
+	d.value.owned = type(d.value.owned) == "table" and d.value.owned or {}
+	local had = d.value.owned[key] == true and (not maxed or (type(d.value.maxed) == "table" and d.value.maxed[key] == true))
+	if had then return "owned" end
+	d.value.owned[key] = true
+	if maxed then
+		d.value.maxed = type(d.value.maxed) == "table" and d.value.maxed or {}
+		d.value.maxed[key] = true
+	end
+	d.dirty = true
+	publish(player, d)
+	script:SetAttribute("OwnGrants", (script:GetAttribute("OwnGrants") or 0) + 1)
+	player:SetAttribute("OwnLastResult", "granted " .. key)
+	task.spawn(write, player, d)
+	return "ok"
 end
 
 Players.PlayerAdded:Connect(onPlayer)

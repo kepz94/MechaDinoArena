@@ -157,6 +157,10 @@ VERSION = "1.12" -- v1.12 saved loadout + pre-game apply
 VERSION = "1.13" -- v1.13 free dino parts
 VERSION = "1.14" -- v1.14 fresh save store (account reset)
 VERSION = "1.15" -- v1.15 universal skill points + bonus points
+VERSION = "1.16" -- v1.16 maxed dinos (Favorite Egg)
+-- v1.16 (Favorite Egg, plan docs/plans/FAVORITE_EGG_v1.0.md Task 2, MDA-608): the v1.13 free-dino rule also holds for every dino in
+--   the player attribute MaxedDinos (comma list, DinoOwnership 1.2: a dino won from the Favorite Egg). A MaxedDinos change
+--   republishes the player. Switch: script attribute SkillMaxedDinosEnabled (true, read per publish / buy; false = 1.15).
 -- v1.15 (universal points, plan docs/plans/UNIVERSAL_POINTS_v1.0.md Task 2; Kepu 2026-11-26 "Make all points universal", "the daily
 --   quest rewards will be skill points"; picks "Full pool on every dino", "Highest dino's XP", "Yes, past 40"; red-team "Accept",
 --   "Yes, that's the point", "No cap"). While script attribute SkillUniversalEnabled ~= false (read at each player's load, d.universal):
@@ -235,7 +239,10 @@ local data = {} -- [player] = {xp, steps, loaded, dirty, lastSave, lastRequest; 
 -- v1.6: the live mecha parts the active dino owns (PATH_ORDER order)
 local function maxAll() return script:GetAttribute("SkillTestMaxAllEnabled") ~= false end -- v1.11
 if script:GetAttribute("SkillFreePartsEnabled") == nil then script:SetAttribute("SkillFreePartsEnabled", true) end -- v1.13
+if script:GetAttribute("SkillMaxedDinosEnabled") == nil then script:SetAttribute("SkillMaxedDinosEnabled", true) end -- v1.16
 local function freeOn(d) -- v1.13: the active dino is the player's free dino
+	if script:GetAttribute("SkillFreePartsEnabled") ~= false and script:GetAttribute("SkillMaxedDinosEnabled") ~= false -- v1.16
+		and type(d.maxedDinos) == "string" and d.active and table.find(string.split(d.maxedDinos, ","), d.active) then return true end
 	return script:GetAttribute("SkillFreePartsEnabled") ~= false and type(d.freeDino) == "string" and d.freeDino ~= ""
 		and d.active == d.freeDino
 end
@@ -298,6 +305,7 @@ end
 
 local function publish(player, d, levelUp)
 	d.freeDino = player:GetAttribute("FreeDino") -- v1.13
+	d.maxedDinos = player:GetAttribute("MaxedDinos") -- v1.16
 	local test = testCloak(d) -- v1.4
 	player:SetAttribute("SkillTestCloak", test and "on" or "off")
 	local given = testParts(d) -- v1.6
@@ -533,6 +541,10 @@ script:GetAttributeChangedSignal("SkillTestCloakEnabled"):Connect(function() -- 
 end)
 local function hookFree(player) -- v1.13: a FreeDino change republishes
 	player:GetAttributeChangedSignal("FreeDino"):Connect(function()
+		local d = data[player]
+		if d and d.loaded then publish(player, d, false) end
+	end)
+	player:GetAttributeChangedSignal("MaxedDinos"):Connect(function() -- v1.16
 		local d = data[player]
 		if d and d.loaded then publish(player, d, false) end
 	end)
