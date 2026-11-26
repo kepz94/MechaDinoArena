@@ -128,6 +128,13 @@
 --     a failed teleport -> the lobby as before.
 --   Switch: script attribute PrArenaMatchEnabled (default true, read at the first arrival; false = an "arena" trip plays like a
 --   bots trip). Diagnostics: PrArenaState ("" / "lineup" / "match" / "done"), PrArenaEligible, PrArenaLeft (count), PrArenaResult.
+-- v1.16 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T6, MDA-579, option A; Kepu 2026-11-25 "A"): on an Arena match server
+--   (PrArena) the fill bots pass as players. When the first Arena arrival sets PrArena, every pool bot gets a persona (in
+--   parallel, at most 8 s): name = FillerNameCheck.pick (a Roblox-style name that is not a real username), the made-up record
+--   FillerRules.record, a skin and trail FillerRules.look (UniversalSkins / TrailCatalog ORDER); spec.name = that name. A bot that
+--   takes a leaver's slot gets one too. The bot spawns with PracticeBots 1.2 opts.persona; PrRoster bot entries carry p = true,
+--   w, l. VS BOTS matches (no PrArena) are unchanged. Switch: script attribute FillerArenaPersona (default true, read when
+--   personas are made; false = 1.15).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -149,6 +156,7 @@ VERSION = "1.12" -- v1.12 pre-match lock (PrematchLockUntil)
 VERSION = "1.13" -- v1.13 respawn hold: park, place on release
 VERSION = "1.14" -- v1.14 respawn: place once
 VERSION = "1.15" -- v1.15 results freeze: no more fighting once the match is won
+VERSION = "1.16" -- v1.16 Arena fill bots pass as players (personas)
 -- v1.15 (Kepu 2026-11-24 22:37 "once the game is done then it just goes into presentation mode and no more fighting in the
 --   background"): when Hardpoint HpPhase turns "results" in a match (phase "match"), everyone stops:
 --   * every living human's HumanoidRootPart is server-owned and anchored where it stands (velocity zeroed) and the character
@@ -339,6 +347,41 @@ local function botSpecies()
 end
 local jobsDirty, lastJobs = true, 0 -- v1.3
 
+-- v1.16: Arena match bots pass as players (see the header)
+if script:GetAttribute("FillerArenaPersona") == nil then script:SetAttribute("FillerArenaPersona", true) end
+local FillerR = DA:FindFirstChild("FillerRules") and require(DA.FillerRules)
+local FillerNC = DA:FindFirstChild("FillerNameCheck") and require(DA.FillerNameCheck)
+local personaUsed = {}
+local function personaOn()
+	return ARENA and script:GetAttribute("FillerArenaPersona") ~= false and FillerR ~= nil and FillerNC ~= nil
+end
+local function personaize(spec) -- yields (the name check)
+	if not personaOn() or type(spec) ~= "table" or spec.persona then return spec end
+	local name = FillerNC.pick(rng, personaUsed)
+	local w, l = FillerR.record(name)
+	local US = DA:FindFirstChild("UniversalSkins") and require(DA.UniversalSkins)
+	local TC = DA:FindFirstChild("TrailCatalog") and require(DA.TrailCatalog)
+	local skin, trail = FillerR.look(rng, US and US.ORDER or {"classic"}, TC and TC.ORDER or {})
+	spec.persona = {name = name, w = w, l = l, skin = skin, trail = trail}
+	spec.name = name
+	return spec
+end
+local function personaizeAll(list) -- every spec in parallel, waits for all (at most 8 s)
+	if not personaOn() then return end
+	local left = 0
+	for _, spec in ipairs(list) do
+		if type(spec) == "table" and not spec.persona then
+			left += 1
+			task.spawn(function()
+				pcall(personaize, spec)
+				left -= 1
+			end)
+		end
+	end
+	local t0 = os.clock()
+	while left > 0 and os.clock() - t0 < 8 do task.wait() end
+end
+
 local function rollPool()
 	local used = {}
 	pool = {}
@@ -403,7 +446,9 @@ local function publish()
 				table.insert(out[side], {kind = "human", name = s.player.DisplayName, userId = s.player.UserId,
 					species = c and c:GetAttribute("Species") or s.player:GetAttribute("DinoSpecies") or "", parts = {}})
 			else
-				table.insert(out[side], {kind = "bot", name = s.spec.name, species = s.spec.species, parts = partNames(s.spec)})
+				local pe = s.spec.persona -- v1.16
+				table.insert(out[side], {kind = "bot", name = s.spec.name, species = s.spec.species, parts = partNames(s.spec),
+					p = pe and true or nil, w = pe and pe.w or nil, l = pe and pe.l or nil})
 			end
 		end
 	end
@@ -465,7 +510,7 @@ local function spawnBot(rec)
 	local spot, centre = pick(probe)
 	probe:Destroy()
 	local model = Bots.spawn(rec.spec, rec.team, groundCF(spot, centre), botFolder, {xpMul = get("PrBotXpMul"),
-		noCollide = get("PrBotNoCollide") ~= false}) -- v1.2: + noCollide
+		noCollide = get("PrBotNoCollide") ~= false, persona = rec.spec and rec.spec.persona}) -- v1.2: + noCollide; v1.16: + persona
 	if not model then return end
 	rec.model, rec.hrp, rec.hum, rec.species = model, model:FindFirstChild("HumanoidRootPart"), model:FindFirstChildOfClass("Humanoid"), rec.spec.species
 	rec.deadAt, rec.respawnAt, rec.busy, rec.target, rec.path, rec.wp = nil, nil, false, nil, nil, nil
@@ -790,6 +835,7 @@ end)
 local function botForSlot(side, idx)
 	local s = slots[side][idx]
 	local spec = R.rollBot(rng, (function() local u = {} for _, r in ipairs(botRecs) do u[r.spec.name] = true end return u end)(), SkillTree, get("PrBotLevel"), botSpecies()) -- v1.3: + species
+	spec = personaize(spec) -- v1.16
 	local rec = {spec = spec, team = side}
 	slots[side][idx] = {kind = "bot", spec = spec, rec = rec}
 	table.insert(botRecs, rec)
@@ -1018,6 +1064,7 @@ local function arrive(pl)
 		if not ARENA then
 			ARENA = true
 			set("PrArena", true)
+			personaizeAll(pool) -- v1.16
 			script:SetAttribute("PrArenaState", "lineup")
 			pcall(function() hs:SetAttribute("HpXpPracticeMul", 1) end)
 			local trip = arenaTrip and td.mdaTrip or {teams = {A = {pl.UserId}, B = {}}, members = {pl.UserId}, matchId = "studio-" .. tostring(os.time())}

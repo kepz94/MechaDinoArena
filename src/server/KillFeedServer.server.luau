@@ -28,6 +28,10 @@
 -- v1.2 (universal skins, MDA-567, plan docs/plans/UNIVERSAL_SKINS_v0.1.md Task 2; Kepu 2026-11-24 kills = "Arena + island bots"):
 --   a kill with a player as the killer also fires the BindableEvent KillCredit (child of this script) with (killer UserId, victim
 --   model, the KilledAt counted or true for a fallback) for SkinStats 1.0. Nothing else changes.
+-- v1.3 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T6, MDA-579, option A): a bot model with FillerPersona = true (FillerServer
+--   hub bots, Arena match fill bots) gives who.p = true; the entry also carries kP / vP (killer / victim is a persona bot), so
+--   clients draw it like a player. Stats, ids and kBot / vBot unchanged. Switch: script attribute KillFeedPersonaEnabled
+--   (default true, read per kill; false = no kP / vP, as 1.2).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerScriptService = game:GetService("ServerScriptService")
@@ -35,6 +39,7 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 player-kill stat
 VERSION = "1.2" -- v1.2 KillCredit for SkinStats
+VERSION = "1.3" -- v1.3 kP / vP for filler bot personas
 local FALLBACK_WAIT = 0.4
 local HOW = {bite = "Bite", pounce = "Pounce", headbutt = "Headbutt", slash = "Slash", bleed = "Bleed", dilobite = "Bite",
 	dilodart = "Venom Dart", dilovenom = "Venom", troopod = "Pod", troozone = "Zone", scratch = "Scratch", thericlaw = "Claws",
@@ -94,7 +99,7 @@ local function whoOfName(name)
 	local m = f and f:FindFirstChild(name)
 	if m then
 		return {name = m:GetAttribute("DisplayName") or name, team = m:GetAttribute("HardpointBotTeam") or "", bot = true, id = 0,
-			sp = m:GetAttribute("Species") or "", key = "b" .. name}
+			sp = m:GetAttribute("Species") or "", key = "b" .. name, p = m:GetAttribute("FillerPersona") == true} -- v1.3: + p
 	end
 	local short = name:match("^PBot_(.+)$")
 	return {name = short or name, team = "", bot = short ~= nil, id = 0, sp = "", key = (short and "b" or "n") .. name}
@@ -123,6 +128,7 @@ local function report(victim, vWho, killerName, how)
 	end
 	local e = {k = kWho.name, kTeam = kWho.team, kBot = kWho.bot, kId = kWho.id, kSp = kWho.sp, how = how, v = vWho.name,
 		vTeam = vWho.team, vBot = vWho.bot, vId = vWho.id, vSp = vWho.sp, at = now()}
+	if script:GetAttribute("KillFeedPersonaEnabled") ~= false then e.kP, e.vP = kWho.p == true, vWho.p == true end -- v1.3
 	remote:FireAllClients(e)
 	bump("KillFeedSent")
 	script:SetAttribute("KillFeedLast", ("%s > %s > %s"):format(e.k, how, e.v))
@@ -176,7 +182,7 @@ local function watchBot(m)
 	if not m:IsA("Model") or m:GetAttribute("PracticeBot") ~= true then return end
 	local function vWho()
 		return {name = m:GetAttribute("DisplayName") or m.Name, team = m:GetAttribute("HardpointBotTeam") or "", bot = true, id = 0,
-			sp = m:GetAttribute("Species") or "", key = "b" .. m.Name}
+			sp = m:GetAttribute("Species") or "", key = "b" .. m.Name, p = m:GetAttribute("FillerPersona") == true} -- v1.3: + p
 	end
 	local startAt = m:GetAttribute("KilledAt")
 	if startAt ~= nil then seen[m] = startAt end

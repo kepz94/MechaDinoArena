@@ -95,6 +95,10 @@
 --   Diagnostics: HpAwardsLast ("mvp <id> svp <id> rows n granted n" / "off" / "noModule"), HpAwardsCount.
 -- v1.7 (Kepu 2026-11-12 18:04 XP "doesn't feel rewarding"; pick "50% of a real match"): HpXpPracticeMul default 0.5 (was 0.1):
 --   a bots match's point / win / MVP / SVP lines pay half a real match's (PracticeServer 1.8 makes bot kills 50% too).
+-- v1.11 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T6, MDA-579, option A): a bot row whose model (DinoIsland.Bots child
+--   named as its id after the "b") has FillerPersona = true gets p = true (kept once seen). HpBoard rows and the award rows carry
+--   p; clients draw those rows like players (no BOT tag) and MatchAwards 1.x gives them display-only XP lines. Switch: script
+--   attribute HpPersonaEnabled (default true, read when a row is made / published; false = no p, as 1.10).
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
@@ -111,6 +115,7 @@ VERSION = "1.7" -- v1.7 bots match XP 50%
 VERSION = "1.8" -- v1.8 practice start lead (pre-match countdown)
 VERSION = "1.9" -- v1.9 victory titles
 VERSION = "1.10" -- v1.10 every winner gets a title
+VERSION = "1.11" -- v1.11 persona bots on the board (p)
 -- v1.10 (victory titles, MDA-554; Studio bots-match test 2026-11-16): a board row only exists after a stat (kill, death, point
 --   second, heal, ability), so a winner with none (e.g. stood off the point all match) got no title. At results every counted
 --   member of the winning team without a row is added to the title pick with zeros (k, d, pt, heal, ab = 0; name / species from
@@ -518,6 +523,14 @@ pickFn.OnInvoke = function(player)
 end
 
 -- ---------- v1.1: scoreboard ----------
+-- v1.11: filler bot personas on the board (see the header)
+local function personaOf(id)
+	if script:GetAttribute("HpPersonaEnabled") == false or type(id) ~= "string" or id:sub(1, 1) ~= "b" then return nil end
+	local island = workspace:FindFirstChild("DinoIsland")
+	local f = island and island:FindFirstChild("Bots")
+	local m = f and f:FindFirstChild(id:sub(2))
+	return (m and m:GetAttribute("FillerPersona") == true) and true or nil
+end
 local board = {} -- [id] = {id, name, team, species, bot, k, d, pt}
 local boardDirty, boardAt = false, 0
 local function boardRow(id, name, team, species, isBot)
@@ -527,6 +540,7 @@ local function boardRow(id, name, team, species, isBot)
 		board[id] = r
 	end
 	r.name, r.team = name or r.name, team or r.team
+	if r.bot and not r.p then r.p = personaOf(id) end -- v1.11
 	if species then r.species = species end
 	boardDirty = true
 	return r
@@ -538,7 +552,7 @@ local function publishBoard(force)
 	local list = {}
 	for _, r in pairs(board) do
 		table.insert(list, {id = r.id, name = r.name, team = r.team, species = r.species, bot = r.bot, k = r.k, d = r.d,
-			pt = math.floor(r.pt + 0.5), pk = r.pk or 0, heal = math.floor((r.heal or 0) + 0.5), ab = r.ab or 0}) -- v1.5: + pk; v1.9: + heal, ab
+			pt = math.floor(r.pt + 0.5), pk = r.pk or 0, heal = math.floor((r.heal or 0) + 0.5), ab = r.ab or 0, p = r.p}) -- v1.5: + pk; v1.9: + heal, ab; v1.11: + p
 	end
 	table.sort(list, function(x, y) if x.k ~= y.k then return x.k > y.k end return x.name < y.name end)
 	set("HpBoard", HttpService:JSONEncode(list))
@@ -701,7 +715,7 @@ local function award(m)
 	end
 	local rows = {}
 	for _, r in pairs(board) do
-		table.insert(rows, {id = r.id, team = r.team, bot = r.bot, k = r.k, d = r.d, pt = r.pt, pk = r.pk or 0})
+		table.insert(rows, {id = r.id, team = r.team, bot = r.bot, k = r.k, d = r.d, pt = r.pt, pk = r.pk or 0, p = r.p}) -- v1.11: + p
 	end
 	local res = MatchAwards.compute(rows, m.winner, PRACTICE, awardsCfg())
 	task.spawn(function()
