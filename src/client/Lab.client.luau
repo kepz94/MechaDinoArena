@@ -146,6 +146,24 @@ VERSION = "2.0" -- v2.0 Lab Revamp v1.0: slots first
 VERSION = "2.1" -- v2.1 Looks Lab v1.0: owned first, locked tiles say why, emote wheel on the left
 VERSION = "2.2" -- v2.2 island streak progress
 VERSION = "2.3" -- v2.3 no STATS tab while every stat is maxed
+VERSION = "2.4" -- v2.4 island DINO hub
+-- v2.4 (Kepu 2026-11-26 15:39 "I think the main problem is the menu button. When I click Dino I don't have much options on what to do, the Skill button is also kind of redundant. I tried to edit my Dino skins and emotes and trails but the only way I can do that is go all the way to the main menu. Also the Dino options on the island only have mecha parts but not even descriptions, it's just not consistent"; standing pick: recommended option): the island Lab is the one DINO place.
+--   * The island pill (ScreenGui "LabButton", TextButton "Skills", same spot, size, badge, phone drawer slot) reads "DINO" instead of
+--     "SKILLS" (read at start). IslandDino 1.1 hides its own DINO pill while this is on, so there is one DINO button.
+--   * The compact Lab on the hub (ReplicatedStorage ServerKind "hub", player PrInMatch / PrInLobby not true) shows the LOOKS tabs as
+--     the full Lab does: ABILITIES | SKINS | EMOTES | TRAILS (STATS stays hidden while every stat is maxed, Lab 2.3). Equips and buys
+--     go through the same remotes; SkinServer 1.9 accepts skin equips / buys on the hub out of the menu. Match servers keep the
+--     1.x compact Lab (ABILITIES only).
+--   * CHANGE DINO (TextButton "ChangeDino" in the top bar, left of the points chip; panel fill, yellow stroke, FredokaOne, height =
+--     the X button (>= LabMinTap 44)): shown in the compact Lab on the hub. Tap -> the Lab closes, player IslandPickToLab = true and
+--     IslandPickOpen = true (local): PregameScreen 1.9 shows the dino step; picking a dino (or BACK) closes it and reopens this Lab
+--     on your new dino (descriptions in the detail sheet), instead of the parts step without descriptions. IslandPickToLab is
+--     cleared when the picker closes another way.
+--   Switch: script attribute LabIslandHubEnabled (true; pill text read at start, tabs / CHANGE DINO read per draw; false = 2.3).
+--   Diagnostic: player LabLastPress "changeDino".
+--   New code lives in the script-global table L4 (the main chunk is at the 200-local limit).
+if script:GetAttribute("LabIslandHubEnabled") == nil then script:SetAttribute("LabIslandHubEnabled", true) end -- v2.4
+L4 = {} -- v2.4: island DINO hub helpers (script-global, as EMO / TRL / L2 / L3)
 -- v2.3 (Kepu 2026-11-26 11:14 "lets remove stats entirely. everyone should be automatically maxed out."; SkillServer 1.18): while the player attribute SkillAllStatsMax is true the
 --   STATS tab is hidden (the tab row lays out without it), a stats view falls back to the parts view, and its button does nothing.
 --   A SkillAllStatsMax change redraws an open Lab. Switch: script attribute LabHideStatsEnabled (true, read per draw).
@@ -582,6 +600,15 @@ local closeCorner = corner(closeB)
 stroke(closeB, WHITE, 0.84, 2)
 local closeX = label(closeB, "X", Enum.Font.FredokaOne, 16, WHITE, "X") -- "✕" draws as a box in the game fonts
 closeX.Size = UDim2.fromScale(1, 1)
+L4.chgB = button(barRight, "ChangeDino", PANEL) -- v2.4: CHANGE DINO (island Lab)
+L4.chgB.LayoutOrder = 0
+L4.chgB.AutomaticSize = Enum.AutomaticSize.X
+L4.chgB.Visible = false
+L4.chgCorner = corner(L4.chgB)
+stroke(L4.chgB, YELLOW, 0.2, 2)
+L4.chgPad = pad(L4.chgB, 12)
+L4.chgL = label(L4.chgB, "T", Enum.Font.FredokaOne, 16, WHITE, "CHANGE DINO")
+L4.chgL.AutomaticSize = Enum.AutomaticSize.X
 
 -- body columns
 local body = frame(box, "Body")
@@ -975,8 +1002,13 @@ local function uniMod()
 	end
 	return USM
 end
+function L4.islandHub() -- v2.4: the compact Lab on the main island
+	return script:GetAttribute("LabIslandHubEnabled") ~= false and ReplicatedStorage:GetAttribute("ServerKind") == "hub"
+		and player:GetAttribute("PrInMatch") ~= true and player:GetAttribute("PrInLobby") ~= true
+end
+function L4.looksMode() return mode == "full" or (mode == "compact" and L4.islandHub()) end -- v2.4: LOOKS tabs here
 local function useUni() return uniSkinsOn and uniMod() ~= nil end
-local function uniTab() return useUni() and tab == "skins" and mode == "full" end
+local function uniTab() return useUni() and tab == "skins" and L4.looksMode() end -- v2.4: was mode == "full"
 local uniView = nil -- dino shown on the SKINS stage (nil = yours)
 local uniFilter = "all"
 local function uniStageSpecies()
@@ -2558,6 +2590,12 @@ local function layout()
 	closeB.Size = UDim2.fromOffset(S.closeS, S.closeS)
 	closeCorner.CornerRadius = UDim.new(0, 1.6 * ch)
 	closeX.TextSize = math.max(2.4 * ch, 14)
+	L4.chgB.Visible = mode == "compact" and L4.islandHub() -- v2.4
+	L4.chgB.Size = UDim2.fromOffset(0, S.closeS)
+	L4.chgCorner.CornerRadius = UDim.new(0, 1.6 * ch)
+	L4.chgPad.PaddingLeft, L4.chgPad.PaddingRight = UDim.new(0, 1.6 * ch), UDim.new(0, 1.6 * ch)
+	L4.chgL.TextSize = math.max(2.2 * ch, 13)
+	L4.chgL.Size = UDim2.fromOffset(0, S.closeS)
 	L2.layoutBody() -- v2.0: body, columns, tabs, list, sheet, LOOKS, toast (Lab Revamp v1.0)
 	-- compact vs full look
 	if mode == "compact" and (not S.L or S.L.inset) then -- v2.0: the island Lab on touch is full screen
@@ -2592,7 +2630,7 @@ function L2.layoutBody()
 			t.Activated:Connect(function() L2.openLooks(string.lower(k)) end)
 		end
 	end
-	local full = skinsOn and mode == "full"
+	local full = skinsOn and L4.looksMode() -- v2.4: was mode == "full"
 	local view = EMO.on() and EMO.looks or "skins"
 	local tl = {{tabParts, tabCorners[1], tabStrokes[1], tabLabels[1], "ABILITIES", tab == "parts", VOLT},
 		{tabStats, tabCorners[2], tabStrokes[2], tabLabels[2], "STATS", tab == "stats", VOLT}}
@@ -2814,7 +2852,7 @@ function L2.layoutBody()
 end
 
 function L2.openLooks(kind)
-	if not (skinsOn and mode == "full") then return end
+	if not (skinsOn and L4.looksMode()) then return end -- v2.4: was mode == "full"
 	press("tab:" .. kind)
 	tab = "skins"
 	slotSel = nil
@@ -3494,7 +3532,7 @@ tabStats.Activated:Connect(function()
 end)
 player:GetAttributeChangedSignal("SkillAllStatsMax"):Connect(function() if mode then redraw() end end) -- v2.3
 tabSkins.Activated:Connect(function() -- v1.6
-	if not (skinsOn and mode == "full") then return end
+	if not (skinsOn and L4.looksMode()) then return end -- v2.4: was mode == "full"
 	press("tab:skins")
 	EMO.looks, EMO.arm, L2.sheet = "skins", false, false -- v2.0: SKINS is its own tab
 	tab = "skins"
@@ -3547,7 +3585,7 @@ local function setOpen(kind)
 		end
 	end
 	if kind then
-		if kind ~= "full" and tab == "skins" then tab = "parts" end -- v1.6: SKINS only in the full Lab
+		if kind ~= "full" and tab == "skins" and not L4.looksMode() then tab = "parts" end -- v1.6: SKINS only in the full Lab (v2.4: and the island Lab)
 		slotSel = nil
 		stageKey = nil
 		L2.sheet = false -- v2.0
@@ -3565,6 +3603,20 @@ local function setOpen(kind)
 	end
 end
 closeB.Activated:Connect(function() press("close") setOpen(nil) end)
+L4.chgB.Activated:Connect(function() -- v2.4: CHANGE DINO -> the island picker, back to this Lab after (PregameScreen 1.9)
+	if not (mode == "compact" and L4.islandHub()) then return end
+	press("changeDino")
+	setOpen(nil)
+	player:SetAttribute("IslandPickToLab", true)
+	player:SetAttribute("IslandPickOpen", true)
+end)
+player:GetAttributeChangedSignal("IslandPickOpen"):Connect(function() -- v2.4: closed another way -> no return trip
+	if player:GetAttribute("IslandPickOpen") ~= true then
+		task.delay(0.3, function()
+			if player:GetAttribute("IslandPickOpen") ~= true then player:SetAttribute("IslandPickToLab", nil) end
+		end)
+	end
+end)
 
 -- API for MainMenu 1.2
 local openFn = script:FindFirstChild("Open") or Instance.new("BindableFunction")
@@ -3874,6 +3926,7 @@ local lbText = label(labButton, "T", Enum.Font.FredokaOne, 18, WHITE, "SKILLS")
 lbText.AutomaticSize = Enum.AutomaticSize.X
 lbText.Size = UDim2.fromOffset(0, 36)
 lbText.TextStrokeTransparency = 0.6
+if script:GetAttribute("LabIslandHubEnabled") ~= false then lbText.Text = "DINO" end -- v2.4: one DINO button
 local lbBadge = label(labButton, "Badge", Enum.Font.FredokaOne, 14, DARK_TEXT, "0")
 lbBadge.BackgroundTransparency = 0
 lbBadge.BackgroundColor3 = YELLOW

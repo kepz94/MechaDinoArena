@@ -56,6 +56,12 @@ VERSION = "1.5" -- v1.5 island picker mode
 VERSION = "1.6" -- v1.6 rank badge on the lineup plaques
 VERSION = "1.7" -- v1.7 filler bot personas drawn as players
 VERSION = "1.8" -- v1.8 coming soon + locked dinos
+VERSION = "1.9" -- v1.9 island pick back to the Lab
+-- v1.9 (Kepu 2026-11-26 15:39 "I think the main problem is the menu button. When I click Dino I don't have much options on what to do, the Skill button is also kind of redundant. I tried to edit my Dino skins and emotes and trails but the only way I can do that is go all the way to the main menu. Also the Dino options on the island only have mecha parts but not even descriptions, it's just not consistent"; standing pick: recommended option): island mode opened from the Lab's CHANGE DINO (player IslandPickToLab = true, Lab 2.4): SELECT on the dino step
+--   sends the swap as before (DinoSpeciesRequest), then closes the screen (IslandPickOpen = false) instead of going to the parts step,
+--   and reopens the island Lab (PlayerScripts.Lab.Open "compact") once your character is the picked dino (Species attribute, up to
+--   PregameToLabWait 6 s); BACK on the dino step closes it and reopens the Lab too. Locked / coming soon dinos behave as 1.8.
+--   Switch: script attribute PregameIslandToLabEnabled (true, read per press; false = 1.8 parts step). Diagnostic PregameToLab (count).
 -- v1.8 (Kepu 2026-11-26 08:06 "make dinos 40 skill points to unlock base or pay robux to unlock maxed out", 08:09 "for the t-rex have
 --   it be unselectable and unable to use. just slap a coming soon on it"; SpeciesServer 1.11, DinoUnlockServer 1.0): on the SELECT
 --   dino step a tile whose dino is coming soon (ReplicatedStorage DinoComingSoon) gets a dark cover "COMING SOON" (muted) and can't
@@ -1117,6 +1123,31 @@ for _, col in ipairs(cols) do
 	col.plaque.Activated:Connect(function() if col.plaque.Active then openSelect() end end)
 	col.click.Activated:Connect(function() if col.tap.Visible then openSelect() end end)
 end
+local function toLab(want) -- v1.9: close the island pick, reopen the island Lab on the (new) dino
+	player:SetAttribute("IslandPickToLab", nil)
+	player:SetAttribute("IslandPickOpen", false)
+	setGhost(nil)
+	setView("hidden")
+	script:SetAttribute("PregameToLab", (script:GetAttribute("PregameToLab") or 0) + 1)
+	task.spawn(function()
+		local t0 = os.clock()
+		local waitMax = tonumber(script:GetAttribute("PregameToLabWait")) or 6
+		while want and os.clock() - t0 < waitMax do
+			local c = player.Character
+			if c and c:GetAttribute("Species") == want then break end
+			task.wait(0.1)
+		end
+		task.wait(0.3)
+		if player:GetAttribute("InMenu") == true then return end
+		local ps = player:FindFirstChild("PlayerScripts")
+		local lab = ps and ps:FindFirstChild("Lab")
+		local open = lab and lab:FindFirstChild("Open")
+		if open then pcall(function() open:Invoke("compact") end) end
+	end)
+end
+local function toLabOn() -- v1.9
+	return islandMode() and player:GetAttribute("IslandPickToLab") == true and script:GetAttribute("PregameIslandToLabEnabled") ~= false
+end
 backBtn.Activated:Connect(function()
 	if sel.step == "parts" then
 		press("toDino")
@@ -1124,6 +1155,7 @@ backBtn.Activated:Connect(function()
 		drawSelect()
 	else
 		press("back")
+		if toLabOn() then toLab(nil) return end -- v1.9
 		if respawnMode() then respawnFire("close") setView("hidden") -- v1.4
 		elseif islandMode() then player:SetAttribute("IslandPickOpen", false) setGhost(nil) setView("hidden") -- v1.5
 		else setView("lineup") end
@@ -1167,6 +1199,7 @@ goBtn.Activated:Connect(function()
 			if respawnMode() then respawnFire("dino", sel.draft) -- v1.4
 			elseif speciesRemote then speciesRemote:FireServer(sel.draft) end
 		end
+		if toLabOn() then toLab(sel.draft) return end -- v1.9: back to the island Lab, not the parts step
 		sel.step = "parts"
 		sel.act = 1
 		drawSelect()

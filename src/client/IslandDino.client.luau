@@ -20,6 +20,10 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 yields to the Lab's DINO pill
+-- v1.1 (Kepu 2026-11-26 15:39 "I think the main problem is the menu button. When I click Dino I don't have much options on what to do, the Skill button is also kind of redundant. I tried to edit my Dino skins and emotes and trails but the only way I can do that is go all the way to the main menu. Also the Dino options on the island only have mecha parts but not even descriptions, it's just not consistent"; standing pick: recommended option): while the Lab's script attribute LabIslandHubEnabled is not false (Lab 2.4: its pill reads DINO and opens the
+--   island Lab with abilities, looks and CHANGE DINO), this pill stays hidden, so there is one DINO button. Switch: script attribute
+--   IslandDinoYieldEnabled (true, read per frame; false = 1.0 pill shown as well).
 script:SetAttribute("IslandDinoVersion", VERSION)
 for k, v in pairs({IslandDinoEnabled = true, IslandDinoGap = 8, IslandDinoPresses = 0}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -87,6 +91,11 @@ RunService.RenderStepped:Connect(function()
 	local on = script:GetAttribute("IslandDinoEnabled") ~= false and ReplicatedStorage:GetAttribute("ServerKind") == "hub"
 		and player:GetAttribute("InMenu") ~= true and player:GetAttribute("PrInMatch") ~= true and player:GetAttribute("PrInLobby") ~= true
 		and player:GetAttribute("IslandPickOpen") ~= true
+	if on and script:GetAttribute("IslandDinoYieldEnabled") ~= false then -- v1.1
+		local ps = player:FindFirstChild("PlayerScripts")
+		local lab = ps and ps:FindFirstChild("Lab")
+		if lab and lab:GetAttribute("LabIslandHubEnabled") ~= false then on = false end
+	end
 	local ch = player.Character
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	on = on and hum ~= nil and hum.Health > 0

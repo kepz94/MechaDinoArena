@@ -103,6 +103,17 @@ VERSION = "1.5" -- v1.5 SkinPaintBot for filler bots
 VERSION = "1.6" -- v1.6 island streak earn stat
 VERSION = "1.7" -- v1.7 stand claims + SkinGrant
 VERSION = "1.8" -- v1.8 dino receipts + launch reset
+VERSION = "1.9" -- v1.9 skins on the island
+-- v1.9 (Kepu 2026-11-26 15:39 "I think the main problem is the menu button. When I click Dino I don't have much options on what to do, the Skill button is also kind of redundant. I tried to edit my Dino skins and emotes and trails but the only way I can do that is go all the way to the main menu. Also the Dino options on the island only have mecha parts but not even descriptions, it's just not consistent"; standing pick: recommended option): skin equip / buy requests also pass the "notInMenu" check on the main island (ReplicatedStorage ServerKind
+--   "hub", player PrInMatch / PrInLobby not true), where the island Lab (Lab 2.4) shows SKINS; an equip for the dino you are
+--   repaints your body at once (dress, as before). A skin bought there is equipped at once too ("bought", as in the menu).
+--   Match servers unchanged. Switch: script attribute SkinIslandEquipEnabled (true, read per request).
+if script:GetAttribute("SkinIslandEquipEnabled") == nil then script:SetAttribute("SkinIslandEquipEnabled", true) end
+local function menuOk(player) -- v1.9: in the menu, or on the main island
+	if player:GetAttribute("InMenu") == true then return true end
+	return script:GetAttribute("SkinIslandEquipEnabled") ~= false and ReplicatedStorage:GetAttribute("ServerKind") == "hub"
+		and player:GetAttribute("PrInMatch") ~= true and player:GetAttribute("PrInLobby") ~= true
+end
 -- v1.8: (1) dino unlocks (DinoUnlockServer 1.0, Kepu 2026-11-26 08:06 "pay robux to unlock maxed out", pick "R$149"): before the
 --   trail / emote / skin checks, ServerStorage.DinoReceipt is asked for the player's dino intent for the receipt's rarity; when it is
 --   newer than the skin, emote and trail intents, the receipt goes to DinoReceipt("grant") ("dino" / "repeat" -> PurchaseGranted,
@@ -500,7 +511,7 @@ local function afterGrant(player, kind, species, skinId)
 	if kind == "skin" then
 		player:SetAttribute("SkinLastBought", skinId)
 		player:SetAttribute("SkinLastBoughtAt", workspace:GetServerTimeNow())
-		if player:GetAttribute("InMenu") == true then
+		if menuOk(player) then -- v1.9: was InMenu == true
 			equipBought(player, species, skinId)
 			setResult(player, "bought")
 		else
@@ -634,7 +645,7 @@ local function onBuy(player, id)
 	local result
 	if type(id) ~= "string" or not st then
 		result = "badArg"
-	elseif player:GetAttribute("InMenu") ~= true then
+	elseif not menuOk(player) then -- v1.9: was InMenu ~= true
 		result = "notInMenu"
 	elseif not (char and char.Parent and species) then
 		result = "noBody"
@@ -738,7 +749,7 @@ local function onEquipUni(player, id, forSpecies)
 	local result
 	if type(id) ~= "string" or not st then
 		result = "badArg"
-	elseif player:GetAttribute("InMenu") ~= true then
+	elseif not menuOk(player) then -- v1.9: was InMenu ~= true
 		result = "notInMenu"
 	elseif species == nil and not (char and char.Parent and speciesOf(player, char)) then
 		result = "noBody"
@@ -772,7 +783,7 @@ local function onBuyUni(player, id, forSpecies)
 	local result
 	if type(id) ~= "string" or not st then
 		result = "badArg"
-	elseif player:GetAttribute("InMenu") ~= true then
+	elseif not menuOk(player) then -- v1.9: was InMenu ~= true
 		result = "notInMenu"
 	elseif not species then
 		result = "noBody"
@@ -917,7 +928,7 @@ remote.OnServerEvent:Connect(function(player, action, id, forSpecies)
 	local result
 	if action ~= "equip" or type(id) ~= "string" or not st then
 		result = "badArg"
-	elseif player:GetAttribute("InMenu") ~= true then
+	elseif not menuOk(player) then -- v1.9: was InMenu ~= true
 		result = "notInMenu"
 	elseif not (char and char.Parent and species) then
 		result = "noBody"
