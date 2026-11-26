@@ -202,3 +202,19 @@ Phone emulator and PC: hub with 1 player for 10 minutes (no stuck bots for more 
 attacking, no errors in Output), joins and leaves (FillerTestReal 1 → 8 → 1), an Arena test match, a VS BOTS match
 (unchanged). Record FillerServer think time per tick and phone frame time with 7 bots (R5). Restore every test switch
 afterwards.
+
+## Build + QA log (2026-11-25, not published)
+Built T1-T7 (commits d0932ad .. 703ef67); every script's length + hash in Studio equals the repo (tools/srchash.py; VERSIONS.md rows).
+Deviations from the plan: PlaceGate 1.4 (the hub removed persona bots at once); PersonaPlates 1.0 (the green bot health plate
+gave bots away); FillerServer 1.1 (EmoteId cleared after a bot's emote, else its island tag stayed hidden); leaving bots are
+removed at 50 s at the latest; look() takes no species argument.
+QA (T8):
+- Hub soak, 10 min, 1 player on the islet: no bot still for more than 20 s outside a death / emote, the player took 0 hits in the
+  safe area, no FillerServer brain error, no script error in Output; FillerServer tick 0.7 ms typical, 15.9 ms peak. Bots died
+  and came back often (178 spawns in about 15 min, 2 to 7 alive at a time).
+- Join / leave: FillerTestReal 5 / 1 / 8 (T4 note).
+- Arena test match: personas on the lineup, board, kill feed and results (T6 / T7 notes).
+- VS BOTS private match: practice names, BOT tags, no personas (unchanged).
+- Frame time: Studio's client ran at its 15 fps cap with and without filler bots (66.66 ms both) and with the bot effects on or
+  off (within 0.35 ms), so the phone cost is checked on a live phone after a publish.
+- Test switches back to nil (ModeTestPractice, PrPrivateTest, PrArenaMatchTest, FillerEnabled); SkillTestMaxAllEnabled false.
