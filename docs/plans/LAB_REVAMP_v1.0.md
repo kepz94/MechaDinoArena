@@ -300,3 +300,7 @@ Units: `u = clamp(H / 38.1, 9, 14)` px. That is 10 at H 381 (phone) and 14 at H 
 | R3 | The island compact panel on a phone is too small for 44 px slots. | Kepu: "Full screen on phones" | Compact mode is full screen on touch (Layout section); the LabLayout spec covers compact touch at 750 × 381 and 667 × 375. |
 | R4 | "First time" needs memory across joins, which means a server save. | Kepu: "While a slot is empty" | Task 6: no server change; GOT IT lasts for the session. |
 | R5 | Scope: a 3188-line script at the local limit; splitting into two releases would be safer. | Kepu: "One release" | All 8 tasks ship together; publish only on "Publish". |
+
+## Filed (Dev Hub, 2026-11-25)
+
+ADR-015. Mockup "Lab Revamp v0.1 (picked B · Slots first)". Tickets MDA-584 (T1) through MDA-591 (T8), blocked in build order.
