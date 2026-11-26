@@ -300,8 +300,19 @@ local function tickInterval(char)
 	return get(char, "PounceTickInterval") * mul
 end
 
+-- v1.20 (Kepu 2026-11-26 11:14 "buff all the obviously weak dinos based on damage per second they have"; Studio 2026-11-26, every stat maxed (SkillServer 1.18), main attack, one target, no parts: Teno ~34-43, Therizino ~30, Herrera ~16, Pachy ~15, Dilo ~14 (x1.5 in DiloAttackServer 1.14 -> ~21), Raptor ~11, Troodon ~3): every pounce hit (landing, latch ticks, Blade Claws extras) is
+--   multiplied by script attribute RaptorDamageMul (1.75, read per hit) before rounding: land 8 -> 14, tick 5 -> 8.75 (shown 9), so a
+--   full pounce + latch deals ~58 (was 33), about 19 a second (was ~11). Switch: RaptorBuff120Enabled (true, read per hit; false = 1.19).
+--   Diagnostic: RaptorBuffHits (count).
+for k, v in pairs({RaptorDamageMul = 1.75, RaptorBuff120Enabled = true}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 local function hit(char, model, dmg, now, extra)
 	if sapBlocked(char, model) then return end -- v1.15: Sap Wall
+	if script:GetAttribute("RaptorBuff120Enabled") ~= false then -- v1.20
+		dmg = (tonumber(dmg) or 0) * math.max(0, tonumber(script:GetAttribute("RaptorDamageMul")) or 1.75)
+		script:SetAttribute("RaptorBuffHits", (script:GetAttribute("RaptorBuffHits") or 0) + 1)
+	end
 	local mul = 1
 	local untilT, dmul = model:GetAttribute("DebuffUntil"), model:GetAttribute("DebuffDamageTakenMul")
 	if typeof(untilT) == "number" and typeof(dmul) == "number" and now < untilT then mul = dmul end
@@ -545,6 +556,7 @@ do
 	if script:GetAttribute("PounceBotUseEnabled") == nil then script:SetAttribute("PounceBotUseEnabled", true) end
 	script:SetAttribute("PounceServerVersion", "1.18")
 	script:SetAttribute("PounceServerVersion", "1.19") -- v1.19 pre-match lock
+	script:SetAttribute("PounceServerVersion", "1.20") -- v1.20 raptor pounce damage x1.75 (see the note at hit)
 	-- v1.19 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
 	--   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
 	--   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
