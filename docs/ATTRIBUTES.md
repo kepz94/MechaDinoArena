@@ -3684,3 +3684,9 @@ Model numbers are generator output (old version = the flag in the last column, b
 - ArenaTouch 1.22, AbilityBar 1.45, MechaButtons 1.54 (script, per frame / per press): `HubSafeAttackLockEnabled` (true). Character diagnostics `ArenaTouchHubLocked`, `AbilityBarHubLocked`, `MechaButtonsHubLockedPresses`.
 - FillerServer 1.2 (script, per tick): `FillerSafeGuardEnabled` (true when unset), `FillerSafeGuard` (s; unset = HubRules.GUARD 3). Diagnostic script attribute `FillerSafeBots`.
 - Reads (unchanged): character `HubSafe` (HubServer).
+
+## Universal Skill Points v1.0 (2026-11-26, plan docs/plans/UNIVERSAL_POINTS_v1.0.md)
+- SkillPool 1.0: none (pure module; GRANT_MAX 100).
+- SkillServer 1.15 (script): `SkillUniversalEnabled` (true, read at each player's load), `SkillGrantPointsEnabled` (true, per call), `SkillBonusMax` (unset = no cap; a number caps the bonus), `SkillPointGrants` (count of "ok" grants). BindableFunction `SkillGrantPoints` (Invoke(player, amount 1..100, reason) -> "ok", before, after | "disabled" | "notLoaded" | "badArg").
+- Player: `SkillBonusPoints`, `SkillUniversal` ("on" / "off"), `SkillAccountFrom` ("new" / "max of N dinos" / "uxp of N dinos"), `SkillLastPoints` ("quest +3"). SkillLevel / SkillXP / SkillPoints / SkillLeft now carry the account values (SkillPoints includes the bonus).
+- Save value (MDA_Skills_v3): top-level `uxp` (account XP) and `bonus` added; v stays 2.

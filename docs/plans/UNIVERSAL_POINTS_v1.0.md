@@ -111,3 +111,12 @@ VERSIONS.md (SkillPool 1.0, SkillServer 1.15 with hashes), ATTRIBUTES.md (the sw
    - no cap (as chosen), with BONUS_MAX left as an attribute in case it's needed later;
    - a cap such as 20 bonus points (60 total, the old 1.0 tree maximum).
 4. **Two servers, one save.** Island and Arena use the same key. Bonus points granted on the island must be saved before a teleport. The existing hand-off already waits for the skill save (HubRules SAVE_WAIT 12 s). It is unchanged, so this works only if that wait holds. The Studio check can't run a teleport; the live check after publish confirms it.
+
+## Synthesis (Kepu 2026-11-26)
+- R1 "Accept": SkillUniversalEnabled is an emergency switch; saves keep uxp, bonus and every record.
+- R2 "Yes, that's the point": new dinos come fully levelled.
+- R3 "No cap": bonus points have no ceiling; script attribute SkillBonusMax (unset = no cap) is read by cleanBonus so one can be set later without code.
+- R4 (teleport save): no change; confirmed live after publish (portal trip right after a quest claim, once piece 4 exists; for now after a grant).
+
+## Build (2026-11-26)
+Built after the red-team answers. Patch tools/universalpoints_patch1.luau (tools/universalpoints_generator.py), spec tools/tests/SkillPool.spec.luau PASS 32. Studio results in docs/VERSIONS.md. Fix during the build: the cap edit first put a comment on a line that ended in `steps = ST.sanitize({}, key) end`, which commented out that `end` (compile check caught it; comment dropped). Not published.

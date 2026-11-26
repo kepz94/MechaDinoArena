@@ -1,0 +1,45 @@
+-- SkillPool.spec v1.0 (Mecha Dino Arena) — run in Studio Edit; returns "PASS n" or "FAIL ...".
+local DA = game:GetService("ServerStorage"):WaitForChild("DinoArcade")
+local src = DA:FindFirstChild("SkillPool")
+if not src then return "FAIL missing ServerStorage.DinoArcade.SkillPool" end
+local ok, P = pcall(function() local c = src:Clone() c.Parent = workspace local m = require(c) c:Destroy() return m end)
+if not ok then return "FAIL require: " .. tostring(P) end
+local ST = require(DA.SkillTree)
+local fails, passes = {}, 0
+local function eq(name, got, want)
+	if got == want then passes += 1 else table.insert(fails, ("%s: got %s want %s"):format(name, tostring(got), tostring(want))) end
+end
+eq("version", P.Version, "1.0")
+eq("xp nil", P.accountXp(nil), 0)
+eq("xp empty", P.accountXp({}), 0)
+eq("xp one", P.accountXp({v = 2, dinos = {Raptor = {xp = 500}}}), 500)
+eq("xp max", P.accountXp({v = 2, dinos = {Raptor = {xp = 500}, TRex = {xp = 2000}}}), 2000)
+eq("xp uxp wins", P.accountXp({v = 2, uxp = 3000, dinos = {Raptor = {xp = 500}}}), 3000)
+eq("xp dino wins", P.accountXp({v = 2, uxp = 100, dinos = {Raptor = {xp = 500}}}), 500)
+eq("xp bad uxp", P.accountXp({v = 2, uxp = "x", dinos = {Raptor = {xp = 500}}}), 500)
+eq("xp negative", P.accountXp({v = 2, uxp = -5, dinos = {Raptor = {xp = -1}}}), 0)
+eq("xp nan", P.accountXp({v = 2, uxp = 0 / 0, dinos = {Raptor = {xp = 0 / 0}}}), 0)
+eq("xp floor", P.accountXp({v = 2, dinos = {Raptor = {xp = 12.7}}}), 12)
+eq("xp bad record", P.accountXp({v = 2, dinos = {Raptor = 5, TRex = {xp = 40}}}), 40)
+eq("bonus 5", P.cleanBonus(5), 5)
+eq("bonus -1", P.cleanBonus(-1), 0)
+eq("bonus 2.5", P.cleanBonus(2.5), 0)
+eq("bonus str", P.cleanBonus("3"), 0)
+eq("bonus nil", P.cleanBonus(nil), 0)
+eq("bonus cap", P.cleanBonus(50, 20), 20)
+eq("bonus nil cap", P.cleanBonus(50, nil), 50)
+eq("earned 0", P.earned(0, 0, ST), 0)
+eq("earned max", P.earned(9000, 0, ST), 40)
+eq("earned max+7", P.earned(9000, 7, ST), 47)
+eq("earned 180+2", P.earned(180, 2, ST), 6)
+eq("earned 2000", P.earned(2000, nil, ST), 17)
+eq("earned cap", P.earned(9000, 30, ST, 20), 60)
+eq("grant 1", P.grantOk(1), true)
+eq("grant 100", P.grantOk(100), true)
+eq("grant 0", P.grantOk(0), false)
+eq("grant 101", P.grantOk(101), false)
+eq("grant 1.5", P.grantOk(1.5), false)
+eq("grant str", P.grantOk("1"), false)
+eq("grant nan", P.grantOk(0 / 0), false)
+if #fails > 0 then return "FAIL " .. #fails .. ": " .. table.concat(fails, "; ") end
+return "PASS " .. passes
