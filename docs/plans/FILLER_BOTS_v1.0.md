@@ -95,7 +95,7 @@ T1 → T1b → T2 → T3 → T4 → T5 → T6 → T6b → T7 → T8. The red-tea
   rate 0.36..0.64. The same name always gives the same record.
 - `wanted(realPlayers: number, fillTo: number) -> number`: `math.clamp(fillTo - realPlayers, 0, fillTo - 1)` with a whole
   number count, and 0 when realPlayers is 0.
-- `look(rng, species, skinIds: {string}, trailIds: {string}) -> (skinId, trailId)`: classic skin with weight 0.4, else a
+- `look(rng, skinIds: {string}, trailIds: {string}) -> (skinId, trailId)` (the caller passes that species' skin ids): classic skin with weight 0.4, else a
   random skin of that species. Trail "" with weight 0.3, else a random trail.
 - `emote(rng, state) -> string?`: state = {afterKill: bool, idleFor: number, inSafe: bool, emoteIds: {string}}. After a
   kill, an emote half the time. Idle in the safe area, one emote every 20..45 s. Otherwise nil.
