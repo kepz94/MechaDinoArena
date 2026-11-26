@@ -3706,3 +3706,7 @@ Model numbers are generator output (old version = the flag in the last column, b
 - QuestScreen 1.0 (script): `QuestScreenEnabled` (true), `QuestPanelW` (900), `QuestPanelH` (520), `QuestFitW` (0.92), `QuestFitH` (0.92), `QuestRefresh` (5 s). Player `QuestOpen`, `QuestOpenFrom`.
 - UniversalSkins 1.5: module flag `US.STAND_CLAIMS` (true). SkinServer 1.7: `SkinStandClaimsEnabled` (true); BindableFunction `SkinGrant`; diagnostic `SkinQuestGrants`.
 - SkinUnlockPopup 1.0 (script): `SkinPopupEnabled` (true), `SkinPopupTime` (1 s), `SkinPopupTop` (10 px). Diagnostics `SkinPopupShown`, `SkinPopupLast`.
+- AchievementRules 1.0 (ServerStorage.DinoArcade): none (data LIST of 17, PTS b/s/g = 2/5/10, MAX_STATS istreak/awstreak, LIVE_STATS dinos/skins/level).
+- QuestServer 1.1 (script): adds `QuestAchievementsEnabled` (true, read per use; false = 1.0). Player `AchDoneList` ("NAME|medal;..." of newly done achievements), `AchDoneAt` (server time). Store value gains `ach = {p, c, n}`. Claim ids `a_<id>`.
+- QuestScreen 1.1 (script): adds `QuestAchTabEnabled` (true, read at start), `QuestAchHitH` (66 design px, tap area of the tabs and achievement CLAIM, read at start), `QuestTabsAvoidTopbar` (true, read per fit), `QuestTabGap` (8 design px), `QuestFreeMouseEnabled` (true, read per open). Diagnostic `QuestTabX`.
+- SkinUnlockPopup 1.1 (script): adds `AchPopupEnabled` (true, per signal). Diagnostic `AchPopupShown`.

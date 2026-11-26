@@ -93,3 +93,11 @@ The total is 95 skill points.
 ## Synthesis (Kepu 2026-11-26)
 - R1 "OK": pop-ups queue 1 s each, at most 3 (the third says "+n MORE"), each once per player ever.
 - R2 "Keep 2 / 5 / 10": 95 points total.
+
+## Build note (2026-11-26)
+- Built as planned: AchievementRules 1.0, QuestServer 1.1, QuestScreen 1.1, SkinUnlockPopup 1.1. Plan Task 2 said AchDone / AchDoneMedal; built as one list `AchDoneList` ("NAME|medal;...") + `AchDoneAt` so several at once arrive together for the queue.
+- Studio check found 3 phone / PC gaps, fixed in QuestScreen 1.1:
+  1. Tabs under Roblox's top-left buttons on phones. Kepu: "Move tabs right" (they start right of GuiService.TopbarInset only when the panel corner is under it; switch `QuestTabsAvoidTopbar`).
+  2. Tap targets under 44 px at the phone scale (0.67). Clear 66 px "Hit" buttons on the tabs and each achievement CLAIM (`QuestAchHitH`).
+  3. PC mouse locked to the screen centre while the panel is open (also in the live 1.0 panel). Freed while open (`QuestFreeMouseEnabled`).
+- Not checked: Arena-server counts (first win, regular, champion, hot streak, brawler) need a live Arena trip.

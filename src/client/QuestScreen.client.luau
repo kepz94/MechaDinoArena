@@ -31,7 +31,9 @@ VERSION = "1.1" -- v1.1 achievements tab
 --   three columns ISLAND / ARENA / BOTH (headed "got / total"), rows 58 px with a 40 px medal disc (B / S / G in bronze / silver /
 --   gold once done, grey "?" before), the name, a bar, "have / need", and on the right "+n PTS", a yellow "CLAIM +n" (84 x 44) or
 --   "✓ +n" (the row dims). Header right: "<got> / 17 · +<pts> PTS". Claims go through the same QuestRequest("claim", "a_<id>")
---   (QuestServer 1.1). Switch: script attribute QuestAchTabEnabled (true, read at start; false = 1.0).
+--   (QuestServer 1.1). Switch: script attribute QuestAchTabEnabled (true, read at start; false = 1.0). Tap areas: the two tabs and
+--   each achievement CLAIM carry a clear "Hit" button QuestAchHitH (66, read at start) tall, >= 44 px at the phone scale (0.67 on
+--   iPhone 17 Pro, Studio check 2026-11-26: the visible 44 px CLAIM was 29.7 px).
 script:SetAttribute("QuestScreenVersion", VERSION)
 for k, v in pairs({QuestScreenEnabled = true, QuestPanelW = 900, QuestPanelH = 520, QuestFitW = 0.92, QuestFitH = 0.92, QuestRefresh = 5}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -286,6 +288,18 @@ local function achRow(i)
 	corner(b, 10)
 	r = {f = f, st = st, md = md, ml = ml, nm = nm, trk = trk, fill = fill, pr = pr, rw = rw, holder = holder, btn = b, id = nil, barW = COLW - 56 - 96}
 	b.Activated:Connect(function() if r.id then claimIdRef(r.id) end end)
+	-- v1.1 tap area: a clear 92 x QuestAchHitH (66) button over the 84 x 44 CLAIM, so the tap target is >= 44 px at the phone scale
+	--   (0.67 on iPhone 17 Pro); 66 = the row pitch, so neighbouring rows' areas only touch
+	local hit = Instance.new("TextButton")
+	hit.Name = "Hit"
+	hit.Text = ""
+	hit.BackgroundTransparency = 1
+	hit.AutoButtonColor = false
+	hit.ZIndex = 3
+	hit.Size = UDim2.fromOffset(92, A("QuestAchHitH", 66))
+	hit.Position = UDim2.fromOffset(-4, math.floor((44 - A("QuestAchHitH", 66)) / 2))
+	hit.Parent = holder
+	hit.Activated:Connect(function() if r.id then claimIdRef(r.id) end end)
 	achRows[i] = r
 	return r
 end
@@ -339,9 +353,50 @@ if tabsOn then
 	timerL.Size = UDim2.fromOffset(300, 26)
 	tabQ.Activated:Connect(function() setTab("quests") drawRef() end)
 	tabA.Activated:Connect(function() setTab("ach") drawRef() end)
+	for _, pair in ipairs({{tabQ, "quests"}, {tabA, "ach"}}) do -- v1.1 tap area: QuestAchHitH (66) tall, >= 44 px at the phone scale
+		local hit = Instance.new("TextButton")
+		hit.Name = "Hit"
+		hit.Text = ""
+		hit.BackgroundTransparency = 1
+		hit.AutoButtonColor = false
+		hit.ZIndex = 4
+		hit.Size = UDim2.new(1, 0, 0, A("QuestAchHitH", 66))
+		hit.Position = UDim2.fromOffset(0, math.floor((48 - A("QuestAchHitH", 66)) / 2))
+		hit.Parent = pair[1]
+		hit.Activated:Connect(function() setTab(pair[2]) drawRef() end)
+	end
 	setTab("quests")
 else
 	tabQ.Visible, tabA.Visible = false, false
+end
+-- v1.1 tabs clear of the Roblox buttons (Kepu 2026-11-26 "Move tabs right"): when the panel's top-left corner lies under the Roblox
+--   top bar buttons (GuiService.TopbarInset: they fill the screen left of Min.X, above Max.Y; phones), the tabs start QuestTabGap (8)
+--   design px right of them and the READY text keeps its right edge (810) with what is left (it wraps to 2 lines). Otherwise (PC) the
+--   tabs stay at x 16. Run from fit(). Switch: script attribute QuestTabsAvoidTopbar (true, read per fit). Diagnostic: QuestTabX.
+local GuiService = game:GetService("GuiService")
+local tabX = -1
+local function placeTabs(sc)
+	if not tabsOn then return end
+	local x = 16
+	if script:GetAttribute("QuestTabsAvoidTopbar") ~= false then
+		local cam = workspace.CurrentCamera
+		local vs = cam and cam.ViewportSize or Vector2.new(1280, 720)
+		local ok, r = pcall(function() return GuiService.TopbarInset end)
+		if ok and r then
+			local left, top = (vs.X - PW * sc) / 2, (vs.Y - PH * sc) / 2
+			if top + 12 * sc < r.Max.Y and left + 16 * sc < r.Min.X then
+				x = math.max(16, math.ceil((r.Min.X - left) / sc) + A("QuestTabGap", 8))
+			end
+		end
+	end
+	if x == tabX then return end
+	tabX = x
+	tabQ.Position = UDim2.fromOffset(x, 12)
+	tabA.Position = UDim2.fromOffset(x + 156, 12)
+	local rx = math.max(470, x + 412)
+	readyL.Position = UDim2.fromOffset(rx, 14)
+	readyL.Size = UDim2.fromOffset(810 - rx, 44)
+	script:SetAttribute("QuestTabX", x)
 end
 local function drawAch(v)
 	if not tabsOn then return end
@@ -416,12 +471,25 @@ local function setOpen(on, from)
 	player:SetAttribute("QuestOpenFrom", on and (from or "stand") or "")
 	player:SetAttribute("QuestOpen", on)
 	script:SetAttribute("QuestScreenShown", on)
+	-- v1.1 PC mouse (Studio check 2026-11-26: on PC ShoulderCam keeps MouseBehavior LockCenter, so a click hit the screen centre and
+	--   no tab or CLAIM could be clicked; 1.0 had the same gap). While open: MouseBehavior Default and the cursor shown right after
+	--   the camera, the Lab 1.x pattern (RenderStep "QuestMouse", Camera + 1). Switch: script attribute QuestFreeMouseEnabled (true,
+	--   read per open).
+	pcall(function() RunService:UnbindFromRenderStep("QuestMouse") end)
+	if on and script:GetAttribute("QuestFreeMouseEnabled") ~= false then
+		local UIS = game:GetService("UserInputService")
+		RunService:BindToRenderStep("QuestMouse", Enum.RenderPriority.Camera.Value + 1, function()
+			UIS.MouseBehavior = Enum.MouseBehavior.Default
+			UIS.MouseIconEnabled = true
+		end)
+	end
 end
 
 local function fit()
 	local cam = workspace.CurrentCamera
 	local vs = cam and cam.ViewportSize or Vector2.new(1280, 720)
 	scale.Scale = math.min(1.15, vs.X * A("QuestFitW", 0.92) / PW, vs.Y * A("QuestFitH", 0.92) / PH)
+	placeTabs(scale.Scale) -- v1.1
 end
 
 local function draw()
