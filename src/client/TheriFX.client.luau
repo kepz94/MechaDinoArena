@@ -56,12 +56,21 @@
 --   tip at 34 per second, and a dust ball at 9 per second (the mockup's rates, per therizino, not per claw).
 --   Switch: script attribute TheriFXScrapeEnabled (default true, read each frame; TheriFXEnabled false turns it off too).
 --   Diagnostics: script TheriFXGrooves (strips alive), TheriFXScraping (therizinos scraping now).
+-- v1.3 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.2).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.3 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 combo effects (MDA-204)
 VERSION = "1.2" -- v1.2 run scrape (MDA-204)
+VERSION = "1.3" -- v1.3 filler bots: bots drawn too (BotChars)
 local LIVE_MAX = 1.6
 local TRAIL_LIFE = 0.2
 local DUST, SPARK, HOT = Color3.fromHex("CBB487"), Color3.fromHex("FFF0B0"), Color3.fromHex("FF9A3C")
@@ -720,7 +729,7 @@ do
 	RunService.Heartbeat:Connect(function(dt)
 		local scraping = 0
 		if scrapeOn() then
-			for _, pl in ipairs(Players:GetPlayers()) do
+			for _, pl in ipairs(BC and BC.players(script) or Players:GetPlayers()) do -- v1.3 filler bots
 				local char = pl.Character
 				local root = char and char:FindFirstChild("HumanoidRootPart")
 				if root and char:GetAttribute("Species") == "Therizino" and (tonumber(char:GetAttribute("TheriRunBlend")) or 0) >= SCRAPE_RUN then
@@ -782,3 +791,4 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+if BC then BC.watch(script, onPlayer) end -- v1.3 filler bots

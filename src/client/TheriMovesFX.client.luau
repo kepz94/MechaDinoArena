@@ -42,7 +42,15 @@
 --   nothing when the character's TheriFeatherVolley is true (TheriMovesFX2 1.1 draws the volley); false / nil = the 1.3 blades.
 -- v1.5 (Deflector Shield Wall, plan docs/plans/THERIZINO_DEFLECT_CLOCK_v2.0.md, MDA-270; TheriMovesServer 1.7): deflectBlock()
 --   draws nothing when the character's TheriDeflectWall is true (TheriMovesFX2 1.2 draws the wall's ripple instead).
+-- v1.6 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.5).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.6 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
@@ -51,6 +59,7 @@ VERSION = "1.2" -- v1.2 FX for the v2 looks (hook claw at the chain tip, no roto
 VERSION = "1.3" -- v1.3 steady rings while Overclock is passive
 VERSION = "1.4" -- v1.4 no feather blades while the Wing Volley draws
 VERSION = "1.5" -- v1.5 no collar flash while the Shield Wall draws
+VERSION = "1.6" -- v1.6 filler bots: bots drawn too (BotChars)
 if script:GetAttribute("TheriMovesFXClockSteadyEnabled") == nil then script:SetAttribute("TheriMovesFXClockSteadyEnabled", true) end -- v1.3
 local CHAIN_STEP, SHOOT_TIME, BLADE_TIME = 1.7, 0.15, 0.3
 local LIGHT, DARK = Color3.fromRGB(184, 192, 200), Color3.fromRGB(124, 132, 142)
@@ -446,3 +455,4 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+if BC then BC.watch(script, onPlayer) end -- v1.6 filler bots

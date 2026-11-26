@@ -56,7 +56,15 @@
 --   puff at the burst start, rate 900/s while the burst runs and 300/s for a 0.45 s tail after it (the stretch the flame
 --   would still burn on a Thrusters boost), so the trail along the 40-stud dash reads as dense as a Thrusters trail.
 --   Switch: script attribute DiloJetsFlameV2Enabled (default true, read every frame; false = 1.2).
+-- v1.9 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.8).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.9 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
@@ -96,6 +104,7 @@ VERSION = "1.7" -- v1.7 Sniper Scope: arm swing, red lens glint, venom tracer, s
 --   Switch: script attribute PartsFXScopeEnabled (default true, read at each event / frame; false = 1.6: no scope FX; the arm stays
 --   swung up). Diagnostics: script DiloMovesFXScopeShots.
 VERSION = "1.8" -- v1.8 Sniper Scope shot: bolt + lingering beam (MDA-519)
+VERSION = "1.9" -- v1.9 filler bots: bots drawn too (BotChars)
 -- v1.8 (MDA-519; Kepu 2026-11-13 16:59 "where's the VFX for the bullet? I don't see shit", mockup
 --   docs/mockups/dilo_scope_shot_vfx_v0.1.html, pick "C · Bolt + beam"): the 1.7 thin tracer is replaced by: a glowing venom bolt
 --   (neon ball 1.1 x k + a green PointLight) that flies from the lens to the shot's end in DiloScopeBoltTime (0.12 s), drawing a
@@ -1020,3 +1029,4 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+if BC then BC.watch(script, onPlayer) end -- v1.9 filler bots

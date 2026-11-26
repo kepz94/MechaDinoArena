@@ -3658,3 +3658,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - Bot model (PracticeBots 1.2 persona): FillerPersona (true), FillerW, FillerL (made-up record), TrailId, DisplayName (persona name), FillerSkinResult (SkinPaintBot answer).
 - SkinServer 1.5: SkinPaintBotEnabled (true). ServerStorage.SkinPaintBot (BindableFunction).
 - PlaceGate 1.4: PlaceGateFillerEnabled (true).
+- Client effect scripts (Filler Bots T3): BotFXEnabled (true) on EmoteFX, TrailFX, TenoMovesFX, TenoFX, TheriMovesFX2, TheriMovesFX, TheriFX, HerreraMovesFX, HerreraPartsFX, DiloMovesFX, DiloPartsVFX, DiloFX, TrooPartsFX, CloakFX, HookFX, MechaLegsFX.

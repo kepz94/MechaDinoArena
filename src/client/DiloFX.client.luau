@@ -62,7 +62,15 @@
 --   the dart / hit / Toxic Blood / Feast / Cold Blood events were only watched on players' characters, so a practice bot
 --   dilo's darts did their damage with nothing drawn. Every model in Workspace.DinoIsland.Bots (now and added later) is
 --   watched the same way. Switch: script attribute DiloFXBotsEnabled (default true, read at start; false = 1.3).
+-- v1.6 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.5).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.6 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -72,6 +80,7 @@ VERSION = "1.2" -- v1.2 the animation pass effects
 VERSION = "1.3" -- v1.3 Overdrive goo-dart hand-off, Cobra Spring take-off dust
 VERSION = "1.4" -- v1.4 bots' darts drawn
 VERSION = "1.5" -- v1.5 sniper spit ball + hit (MDA-512)
+VERSION = "1.6" -- v1.6 filler bots: bots drawn too (BotChars)
 -- v1.5 (MDA-512, plan docs/plans/DILO_SNIPER_SPIT_v1.0.md Task 5; DiloAttackServer 1.11): when a dilo's DiloDartAt equals its
 --   DiloSnipeAt (a sniper spit), the newest dart glob is drawn DiloFXSnipeScale (2) x bigger (its trail too) with a brighter,
 --   wider light; its hit (the DiloHitAt that follows, a target named) adds a big flash (16 x k) and a "-<DiloSnipeDamage>"
@@ -791,7 +800,7 @@ do
 	RunService.RenderStepped:Connect(function(dt)
 		local t = now()
 		local alive = {}
-		for _, pl in ipairs(Players:GetPlayers()) do
+		for _, pl in ipairs(BC and BC.players(script) or Players:GetPlayers()) do -- v1.6 filler bots
 			local c = pl.Character
 			if c and c.Parent and c:GetAttribute("Species") == "Dilo" then
 				alive[c] = true
@@ -913,6 +922,7 @@ do
 	end
 	Players.PlayerAdded:Connect(onPl)
 	for _, pl in ipairs(Players:GetPlayers()) do onPl(pl) end
+	if BC then BC.watch(script, onPl) end -- v1.6 filler bots
 end
 
 -- v1.5: sniper spit look (see the header) ---------------------------------------------------------------------------------------
@@ -969,4 +979,5 @@ do
 	end
 	Players.PlayerAdded:Connect(onPl15)
 	for _, pl in ipairs(Players:GetPlayers()) do onPl15(pl) end
+	if BC then BC.watch(script, onPl15) end -- v1.6 filler bots
 end

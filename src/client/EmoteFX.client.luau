@@ -10,11 +10,20 @@
 -- Switches (script attributes): EmoteFXEnabled (true), EmoteFXRange (120 studs from the camera), EmoteWordsEnabled (true),
 --   EmotePropsEnabled (true). Diagnostics: EmoteFXVersion, EmoteFXActive (characters with an emote in range), EmoteFXParts.
 
+-- v1.1 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.0).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.1 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 filler bots: bots drawn too (BotChars)
 local function default(name, v) if script:GetAttribute(name) == nil then script:SetAttribute(name, v) end end
 script:SetAttribute("EmoteFXVersion", VERSION)
 default("EmoteFXEnabled", true)
@@ -587,7 +596,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local range = script:GetAttribute("EmoteFXRange") or 120
 	local now = workspace:GetServerTimeNow()
 	local seen = {}
-	for _, pl in ipairs(Players:GetPlayers()) do
+	for _, pl in ipairs(BC and BC.players(script) or Players:GetPlayers()) do -- v1.1 filler bots
 		local char = pl.Character
 		local id = char and char:GetAttribute("EmoteId")
 		local at, dur = char and char:GetAttribute("EmoteStartedAt"), char and char:GetAttribute("EmoteDuration")

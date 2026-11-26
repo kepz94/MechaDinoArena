@@ -21,10 +21,19 @@
 --   ring / heel puffs / fire burst on every flap (seen in Play: MechaLegsFXCount 3 after a leap + 2 flaps). A character with
 --   Species "Troodon" gets no Mecha Legs effect (its flaps get TrooFX 1.1's feather puff). The pachy unchanged. Switch: script
 --   attribute MechaLegsFXTrooSkipEnabled (default true, read at each double jump; false = 1.1).
+-- v1.3 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.2).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.3 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.2"
+VERSION = "1.3" -- v1.3 filler bots: bots drawn too (BotChars)
 if script:GetAttribute("MechaLegsFXTrooSkipEnabled") == nil then script:SetAttribute("MechaLegsFXTrooSkipEnabled", true) end -- v1.2
 local STALE = 1
 local ORANGE = Color3.fromRGB(255, 170, 60)
@@ -199,3 +208,4 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+if BC then BC.watch(script, onPlayer) end -- v1.3 filler bots

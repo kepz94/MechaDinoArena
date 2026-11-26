@@ -10,11 +10,20 @@
 -- Local parts live in workspace.TrailFXLocal (not replicated; CanCollide / CanQuery / CanTouch false).
 -- Diagnostics: TrailFXVersion, TrailFXActive (dinos drawn), TrailFXParts (prints + bits alive).
 
+-- v1.1 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.0).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.1 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 filler bots: bots drawn too (BotChars)
 script:SetAttribute("TrailFXVersion", VERSION)
 for k, v in pairs({TrailFXEnabled = true, TrailFXRange = 150, TrailMoveSpeed = 2, TrailFXMaxBits = 24, TrailFXMaxTotal = 120, TrailFXSoft = "auto"}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -59,7 +68,7 @@ RunService.RenderStepped:Connect(function(dt)
 	local soft = softNow()
 	local seen, active, total = {}, 0, 0
 	for _, e in pairs(handles) do total += e.h:bits() end
-	for _, pl in ipairs(Players:GetPlayers()) do
+	for _, pl in ipairs(BC and BC.players(script) or Players:GetPlayers()) do -- v1.1 filler bots
 		local char = pl.Character
 		if char then
 			seen[char] = true

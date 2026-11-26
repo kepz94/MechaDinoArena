@@ -79,7 +79,15 @@
 --     HerreraMovesFXCrossEnabled): two red crossed arcs at the SlashHitTarget's root (0.3 s). (Plan Task 7 named it
 --     SlashFX 1.1; kept here so SlashFX stays untouched.)
 --   Diagnostic: script HerreraMovesFX16Events.
+-- v1.8 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.7).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.8 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
@@ -87,6 +95,7 @@ local VERSION = "1.4"
 VERSION = "1.5" -- v1.5 goo mortar kick
 VERSION = "1.6" -- v1.6 wind-up FX
 VERSION = "1.7" -- v1.7 shot pass: faster shots, strong aim assist
+VERSION = "1.8" -- v1.8 filler bots: bots drawn too (BotChars)
 -- v1.7 (Kepu 2026-11-09 "all the projectile shots need to be faster and more auto aim assist on it and longer range"
 --   -> 1.5x faster, 2x range, "Strong" assist = snap to a target within 45 degrees of the aim; plan
 --   docs/plans/SHOT_PASS_v1.0.md): the quills fly at the server's speed (character attribute QuillSpeed,
@@ -467,6 +476,7 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+if BC then BC.watch(script, onPlayer) end -- v1.8 filler bots
 
 local seen = setmetatable({}, {__mode = "k"}) -- [model] = {dazedAt, lostAt}
 local function models()
@@ -713,6 +723,7 @@ do
 	end
 	Players.PlayerAdded:Connect(onKickPlayer)
 	for _, p in ipairs(Players:GetPlayers()) do onKickPlayer(p) end
+	if BC then BC.watch(script, onKickPlayer) end -- v1.8 filler bots
 
 	local function update(cfg)
 		local d = drawn[cfg]
@@ -825,6 +836,7 @@ do
 	end
 	Players.PlayerAdded:Connect(onGooPlayer)
 	for _, p in ipairs(Players:GetPlayers()) do onGooPlayer(p) end
+	if BC then BC.watch(script, onGooPlayer) end -- v1.8 filler bots
 end
 
 -- v1.6: wind-up and impact FX -------------------------------------------------------------------------------------------
@@ -1073,4 +1085,5 @@ do
 	end
 	Players.PlayerAdded:Connect(on16)
 	for _, p in ipairs(Players:GetPlayers()) do on16(p) end
+	if BC then BC.watch(script, on16) end -- v1.8 filler bots
 end

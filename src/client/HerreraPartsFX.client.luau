@@ -17,10 +17,19 @@
 --   "+N" pop (N = SiphonRate x SiphonBleeding x 0.5) shows at most once per second; SiphonKillAt shows a big "+25%" pop.
 -- Switch: script attribute HerreraPartsFXEnabled (default true, read each event; false = no effects).
 -- Diagnostics: script HerreraPartsFXVersion, HerreraPartsFXEvents (count).
+-- v1.1 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.0).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.1 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 filler bots: bots drawn too (BotChars)
 local FLASH_TIME = 0.25
 local HOT = Color3.fromRGB(255, 138, 42)
 local WHITE = Color3.new(1, 1, 1)
@@ -256,6 +265,7 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+if BC then BC.watch(script, onPlayer) end -- v1.1 filler bots
 
 -- siphon beads (every 0.12 s)
 local acc = 0
@@ -266,7 +276,7 @@ RunService.Heartbeat:Connect(function(dt)
 	if not on() then return end
 	local pool
 	local t = workspace:GetServerTimeNow()
-	for _, pl in ipairs(Players:GetPlayers()) do
+	for _, pl in ipairs(BC and BC.players(script) or Players:GetPlayers()) do -- v1.1 filler bots
 		local char = pl.Character
 		local hrp = rootOf(char)
 		if char and hrp and char:GetAttribute("SiphonEnabled") == true then

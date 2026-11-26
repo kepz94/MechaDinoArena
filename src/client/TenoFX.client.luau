@@ -42,11 +42,20 @@
 --   Studio 2026-11-06: a raptor facing the teno has its near side at its snout (~12 studs out), not at half its width, so
 --   the bars sat inside its body; they now go where the line from the box centre toward the teno leaves the target's
 --   oriented bounding box (x 0.9). Switch: script attribute TenoFXRakeSurfaceEnabled (default true; false = the half-width).
+-- v1.4 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.3).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.4 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.2"
 VERSION = "1.3" -- v1.3 rake marks + scratching arm
+VERSION = "1.4" -- v1.4 filler bots: bots drawn too (BotChars)
 if script:GetAttribute("TenoFXRakeMarksEnabled") == nil then script:SetAttribute("TenoFXRakeMarksEnabled", true) end -- v1.3
 if script:GetAttribute("TenoFXRakeSurfaceEnabled") == nil then script:SetAttribute("TenoFXRakeSurfaceEnabled", true) end -- v1.3
 local RAKE, RAKE_TIME = Color3.fromHex("FF3B2F"), 0.45 -- v1.3
@@ -578,3 +587,4 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+if BC then BC.watch(script, onPlayer) end -- v1.4 filler bots

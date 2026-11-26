@@ -99,7 +99,15 @@
 --   (nearby parts, the points ride the parts as they move), living TrooPartsFX_shockArcLife (0.16 s); recovery: when the stun
 --   ends or is broken (Feather Shed / Antivenom / stun breakers set StunnedUntil back) the arcs stop, the sparks stop emitting
 --   (the last ones die out) and the light fades over 0.15 s. No landing FX. Diagnostic: script TrooPartsFXShocks (count).
+-- v1.7 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.6).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.7 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
@@ -111,6 +119,7 @@ VERSION = "1.3" -- v1.3 the lantern homes on its tracked target (MDA-376)
 VERSION = "1.4" -- v1.4 Portal Rift looks (MDA-375)
 VERSION = "1.5" -- v1.5 lantern hit look: Shock Cannon stun look + body arcs (MDA-377)
 VERSION = "1.6" -- v1.6 loud Arc Lantern: heavy chain bolts + hit flash + SHOCKED mark (MDA-508)
+VERSION = "1.7" -- v1.7 filler bots: bots drawn too (BotChars)
 -- v1.6 (MDA-508, plan docs/plans/TROODON_SAP_LANTERN_v1.0.md Task 4, mockup docs/mockups/troodon_lantern_sap_v0.1.html pick "B ·
 --   Shocked mark"; Kepu 2026-11-13 15:08 "show more electricity especially if it's bouncing on to other dinos, it needs to be
 --   visibly obvious that the Dino took the hit and got a debuff"). While script attribute TrooPartsFX_lanternLoudEnabled ~= false
@@ -1552,6 +1561,7 @@ local function onPlayer(pl)
 end
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
 Players.PlayerAdded:Connect(onPlayer)
+if BC then BC.watch(script, onPlayer) end -- v1.7 filler bots
 local walls = workspace:FindFirstChild("TrooWalls") or workspace:WaitForChild("TrooWalls", 30)
 if walls then
 	for _, m in ipairs(walls:GetChildren()) do watchWall(m) end

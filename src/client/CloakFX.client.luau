@@ -47,10 +47,19 @@
 --     it once per gui, so a script that re-enabled one, e.g. TargetHUD giving back the bar it had hidden, showed it over
 --     the cloaked dino). The value restored afterwards is the gui's own: Enabled, or true when TargetHUD 1.2 had it
 --     hidden (gui attribute TargetHUDHidden). Script attribute CloakFXBarsHiddenEnabled (default true; false = 1.3).
+-- v1.5 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.4).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.5 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.4"
+VERSION = "1.5" -- v1.5 filler bots: bots drawn too (BotChars)
 local FAINT_MID, FAINT_AMP = 0.99, 0.005 -- v1.4
 local SELF_LTM = 0.6
 local OTHER_MID, OTHER_AMP = 0.91, 0.03
@@ -286,7 +295,7 @@ RunService:BindToRenderStep("CloakFX", Enum.RenderPriority.Camera.Value + 2, fun
 	local on = script:GetAttribute("CloakFXEnabled") ~= false
 	local shown, selfOn = 0, false
 	local live = {}
-	for _, pl in ipairs(Players:GetPlayers()) do
+	for _, pl in ipairs(BC and BC.players(script) or Players:GetPlayers()) do -- v1.5 filler bots
 		local char = pl.Character
 		if char and char.Parent then
 			live[char] = true

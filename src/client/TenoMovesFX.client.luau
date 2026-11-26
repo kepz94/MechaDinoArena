@@ -73,7 +73,15 @@
 --     TenoLeapLandedAt: 4 white steam puffs rising from each FootL_meta / FootR_meta.
 --   * Shield (TenoMovesFXShieldPulseEnabled), TenoMudCoatAt: a lilac disc from the TPart_tmud "disc" (its size and facing)
 --     growing to 10 x scale studs across over 0.75 s while fading (look only).
+-- v1.8 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.7).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.8 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.2"
@@ -82,6 +90,7 @@ VERSION = "1.4" -- v1.4 mortar launch FX
 VERSION = "1.5" -- v1.5 grab flash at the catch
 VERSION = "1.6" -- v1.6 launch flash at the cannon muzzle
 VERSION = "1.7" -- v1.7 animation pass effects
+VERSION = "1.8" -- v1.8 filler bots: bots drawn too (BotChars)
 if script:GetAttribute("TenoMovesFXMuzzleEnabled") == nil then script:SetAttribute("TenoMovesFXMuzzleEnabled", true) end -- v1.6
 if script:GetAttribute("TenoMovesFXGrabCatchEnabled") == nil then script:SetAttribute("TenoMovesFXGrabCatchEnabled", true) end -- v1.5
 local RING_TIME, ROCK_RELOAD = 0.5, 2.4
@@ -248,6 +257,7 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+if BC then BC.watch(script, onPlayer) end -- v1.8 filler bots
 
 -- v1.1: build-2 effects ---------------------------------------------------------------------------------------------------
 local RunService = game:GetService("RunService")
@@ -412,6 +422,7 @@ local function onPlayer2(p)
 end
 Players.PlayerAdded:Connect(onPlayer2)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer2(p) end
+if BC then BC.watch(script, onPlayer2) end -- v1.8 filler bots
 
 -- v1.2: stomp shockwave, bellow waves, visible mud coat ------------------------------------------------------------------
 if script:GetAttribute("TenoMovesFXV12Enabled") == nil then script:SetAttribute("TenoMovesFXV12Enabled", true) end
@@ -534,6 +545,7 @@ local function onPlayer3(p)
 end
 Players.PlayerAdded:Connect(onPlayer3)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer3(p) end
+if BC then BC.watch(script, onPlayer3) end -- v1.8 filler bots
 
 -- v1.3: the purple Shield Armor look (see the header) ------------------------------------------------------------------------
 local PURPLE, LILAC = Color3.fromRGB(150, 70, 255), Color3.fromRGB(205, 160, 255)
@@ -605,6 +617,7 @@ local function onPlayer4(p)
 end
 Players.PlayerAdded:Connect(onPlayer4)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer4(p) end
+if BC then BC.watch(script, onPlayer4) end -- v1.8 filler bots
 
 -- v1.4: mortar launch FX (see the header) ------------------------------------------------------------------------------------
 if script:GetAttribute("TenoMovesFXMortarBigEnabled") == nil then script:SetAttribute("TenoMovesFXMortarBigEnabled", true) end
@@ -630,6 +643,7 @@ local function onPlayer5(p)
 end
 Players.PlayerAdded:Connect(onPlayer5)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer5(p) end
+if BC then BC.watch(script, onPlayer5) end -- v1.8 filler bots
 
 
 -- v1.7: the animation pass effects (see the header) ---------------------------------------------------------------------------
@@ -790,3 +804,4 @@ local function onPlayer7(p)
 end
 Players.PlayerAdded:Connect(onPlayer7)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer7(p) end
+if BC then BC.watch(script, onPlayer7) end -- v1.8 filler bots

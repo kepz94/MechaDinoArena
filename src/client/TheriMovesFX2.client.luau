@@ -59,12 +59,21 @@
 --     a yellow toothed ring bursts from the chest (0.6 s) + "SLOW IGNORED". With TheriClockJumpAdded: a jump (JumpStartedAt)
 --     that leaves JumpChargesLeft 0 -> a steam ring on the ground (0.45 s) + 6 puffs + "3rd JUMP". Pooled parts, hidden when idle.
 --   Switches TheriMovesFX2_wallEnabled, TheriMovesFX2_steamEnabled (default true).
+-- v1.3 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.2).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.3 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 Wing Volley
 VERSION = "1.2" -- v1.2 Shield Wall + Steam Engine
+VERSION = "1.3" -- v1.3 filler bots: bots drawn too (BotChars)
 script:SetAttribute("TheriMovesFX2Version", VERSION)
 script:SetAttribute("TheriMovesFX2Events", 0)
 for _, k in ipairs({"TheriMovesFX2Enabled", "TheriMovesFX2_vortexEnabled", "TheriMovesFX2_bolaEnabled", "TheriMovesFX2_dashEnabled",
@@ -1237,7 +1246,7 @@ RunService.RenderStepped:Connect(function()
 		if not char.Parent then steamKill(char) end
 	end
 	if not on("steam") then for _, st in pairs(steams) do steamHide(st) end return end
-	for _, pl in ipairs(Players:GetPlayers()) do
+	for _, pl in ipairs(BC and BC.players(script) or Players:GetPlayers()) do -- v1.3 filler bots
 		local char = pl.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
@@ -1386,3 +1395,4 @@ local function onPlayer(p)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, p in ipairs(Players:GetPlayers()) do onPlayer(p) end
+if BC then BC.watch(script, onPlayer) end -- v1.3 filler bots

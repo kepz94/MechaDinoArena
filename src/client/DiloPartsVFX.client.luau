@@ -25,11 +25,20 @@
 --   the oldest effects end first), DiloPartsVFX_rateMul (1: every particle count / rate x this).
 -- Diagnostics (script): DiloPartsVFXVersion, DiloPartsVFXParts (live parts), DiloPartsVFXEffects (live effects),
 --   DiloPartsVFXEvents (count), DiloPartsVFXLast ("<id>:<phase>"), DiloPartsVFXTrims (effects ended by the cap).
+-- v1.2 (filler bots, plan docs/plans/FILLER_BOTS_v1.0.md T3, MDA-576): bot models in Workspace.DinoIsland.Bots (practice and
+--   filler bots) get the same effects as players through the client module BotChars 1.0 (a stand-in "player" per bot).
+--   Switch: script attribute BotFXEnabled (default true; false = 1.1).
 local Players = game:GetService("Players")
+local BC = (function() -- v1.2 filler bots
+	if script:GetAttribute("BotFXEnabled") == nil then script:SetAttribute("BotFXEnabled", true) end
+	local ok, m = pcall(function() return require(Players.LocalPlayer:WaitForChild("PlayerScripts"):WaitForChild("BotChars", 5)) end)
+	return ok and m or nil
+end)()
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 the mortar cloud keeps its thickness when it grows
+VERSION = "1.2" -- v1.2 filler bots: bots drawn too (BotChars)
 -- v1.1 (MDA-548, plan docs/plans/ABILITY_TUNE_v1.0.md rule 1; SkillTree 1.94 makes the Toxin Mortar cloud 1.5x bigger, radius up to 27):
 --   the cloud's smoke rate went with the radius (30 x R / 18) while its area goes with R squared, so a bigger cloud got thinner.
 --   Now the smoke and spark rates go with the area: x (R / 18)^2 (smoke 30, sparks 12 at R 18), at most DiloPartsVFX_mortarRateMax
@@ -1069,3 +1078,4 @@ local function onPlayer(pl)
 end
 Players.PlayerAdded:Connect(onPlayer)
 for _, pl in ipairs(Players:GetPlayers()) do onPlayer(pl) end
+if BC then BC.watch(script, onPlayer) end -- v1.2 filler bots
