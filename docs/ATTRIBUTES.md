@@ -3659,3 +3659,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - SkinServer 1.5: SkinPaintBotEnabled (true). ServerStorage.SkinPaintBot (BindableFunction).
 - PlaceGate 1.4: PlaceGateFillerEnabled (true).
 - Client effect scripts (Filler Bots T3): BotFXEnabled (true) on EmoteFX, TrailFX, TenoMovesFX, TenoFX, TheriMovesFX2, TheriMovesFX, TheriFX, HerreraMovesFX, HerreraPartsFX, DiloMovesFX, DiloPartsVFX, DiloFX, TrooPartsFX, CloakFX, HookFX, MechaLegsFX.
+- FillerServer 1.0 (script): FillerEnabled (true), FillerFillTo (8), FillerTick (0.1), FillerLeaveViaPortal (true), FillerRoamCentre (640,0,640), FillerRoamRadius (200), FillerPathBudget (3), FillerBody (2), FillerLeaveHideDist (120), FillerTestReal (Studio only). Diagnostics FillerServerVersion, FillerState, FillerBots, FillerWanted, FillerReal, FillerLast, FillerMs, FillerBrainError, FillerSpawned, FillerLeft. Bot model: FillerHub (true), BotTier, BotState "leaving".
