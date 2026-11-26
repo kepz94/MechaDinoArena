@@ -117,8 +117,9 @@ Tutorial.client has 121 top-level locals (limit 200); new state goes in one tabl
 - Watcher: when step 6 and slot n (n ≤ `need()`) holds a part with `R.jumpPart(id)`: a `MechaButtonsLastPress` "slot<n>:<id>" does **not** count; instead a change of the character attribute `entry.stamp` (with `needAttr` read from the character at that moment) → `localUsed[n] = true`, `send("used", n)`. All other parts: unchanged.
 - Coach for the next unused slot n holding a JUMP part: touch → `pointAt(<ArenaTouch "Leap" button>, true, "tap", entry.big, entry.small, "up")`; PC → `pcCallout(entry.pcBig, entry.small)`; the objective tip = `entry.tip`. If the ArenaTouch Leap button is missing or hidden: callout only, no ring (no crash).
 - A press on that part's slot button while it is next: tip "That button does nothing for <small>. It works on JUMP." for 2 s.
+- SKIP (red-team R2, Kepu "Show SKIP after 20 s"): when the next unused slot holds a JUMP part and it has been next for `TutJumpPartSkipAfter` s (script attribute, default 20) without a tick, a CTA "SKIP" (≥ 44 px) appears bottom-right (where step 5's TRY THEM sits) and the tip ends with " Or tap SKIP."; SKIP → `localUsed[n] = true`, `send("used", n)` (the same message a real use sends); the timer restarts for the next JUMP part. Normal parts get no SKIP (today's behaviour).
 
-**Map:** JUMP part in slots 1..need → as above; JUMP part in a slot above need → ignored (as today); switch off → 1.6 (slot press counts); stamp changes outside step 6 → ignored; a respawn → watcher re-hooked by `onChar` (CharacterAdded), already-used slots stay in `localUsed` and the server's TutUsed.
+**Map:** JUMP part next < 20 s → coach only; ≥ 20 s → coach + SKIP; JUMP part in slots 1..need → as above; JUMP part in a slot above need → ignored (as today); switch off → 1.6 (slot press counts); stamp changes outside step 6 → ignored; a respawn → watcher re-hooked by `onChar` (CharacterAdded), already-used slots stay in `localUsed` and the server's TutUsed.
 
 - [ ] Step 1: patch 4.
 - [ ] Step 2: apply → compile → hash.
@@ -134,9 +135,16 @@ Tutorial.client has 121 top-level locals (limit 200); new state goes in one tabl
 - Names consistent: `passivesFor`, `jumpPart`, `jumpPartEvent`, `WM.welcomed`, switches `TutorialWelcomeEnabled`, `TutorialRosterTitleEnabled`, `TutorialRosterPassiveEnabled`, `TutorialRevealPassiveEnabled`, `TutorialJumpPartsEnabled`.
 - Fence: no task touches TutorialServer or any gameplay script.
 
-## Red-team
+## Red-team (answered 2026-11-26)
 1. **Hold-to-glide on the touch JUMP button may not work.** ArenaTouch's JUMP sets `Humanoid.Jump` for LEAP_HOLD s; if GliderTest needs a held jump input, a phone player can't glide and step 6 would never tick. Mitigation: Task 5 Step 3 checks this first and stops if it fails (a separate fix in ArenaTouch / GliderTest would need Kepu's OK, it's do-not-touch here).
 2. **Step 6 can now block.** Today any tap passes; with real checks a player who can't do the move is stuck. Mitigation: the existing "next" still works at step 6 (TutorialServer: "next" still works); add acceptance: the coach's tip after 20 s without a tick adds "Or tap NEXT to skip." — needs Kepu's OK (new copy / behaviour).
 3. **Equip order decides who sees it.** Only the parts the Lab coach equips are tried; Teno never gets Hydraulic Leap with today's order (Tail Grab & Fling, Boulder Mortar, Stomp Shockwave, Herd Bellow). Accepted: Hydraulic Leap still says "Fires through JUMP" on its card.
 4. **Roster panel height on the phone.** One PASSIVE card (≈ 2 lines) shrinks the ABILITIES list on the 3 dinos that have one. Mitigation: card has no stat grid; checked in Task 3.
 5. **Play tests on the wiped account.** Mitigation: save scripts off, reported.
+
+## Synthesis (Kepu 2026-11-26)
+- R2 survived: SKIP after `TutJumpPartSkipAfter` (20) s, added to Task 5 (behaviour, map, acceptance: SKIP shows at 20 s, never for normal parts, sends "used", n).
+- R1 conceded: Kepu "Why would the jump not do that? It works right now." The glide already works on the phone JUMP button live; Task 5 Step 3 still checks it as part of the normal Studio check, no stop rule.
+- R3 (Teno never gets Hydraulic Leap with today's equip order): accepted risk.
+- R4 (roster panel height): checked in Task 3.
+- R5 (Play tests): save scripts off, reported.
