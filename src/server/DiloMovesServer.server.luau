@@ -370,11 +370,21 @@ end
 for k, v in pairs({DiloDamageMul = 1.5, DiloBuff116Enabled = true}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
+-- v1.17 (Kepu 2026-11-27 15:39 "way too easy to get kills with the Dilo and Troodon after you boosted them"; DiloAttackServer 1.15):
+--   while script attribute DiloBalance117Enabled ~= false (default true, read per hit) the v1.16 multiplier is DiloDamageMul115
+--   (1.15, read per hit). false = 1.16 (x1.5).
+for k, v in pairs({DiloDamageMul115 = 1.15, DiloBalance117Enabled = true}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 local function damage(char, player, m, base, with, t)
 	if shielded(m, t) then return 0 end
 	local d = math.max(0, base) * takenMul(m, t) * armorMul(m) -- v1.10 (MDA-366): armor
 	if script:GetAttribute("DiloBuff116Enabled") ~= false then -- v1.16
-		d *= math.max(0, tonumber(script:GetAttribute("DiloDamageMul")) or 1.5)
+		if script:GetAttribute("DiloBalance117Enabled") ~= false then -- v1.17
+			d *= math.max(0, tonumber(script:GetAttribute("DiloDamageMul115")) or 1.15)
+		else
+			d *= math.max(0, tonumber(script:GetAttribute("DiloDamageMul")) or 1.5)
+		end
 		script:SetAttribute("DiloBuffHits", (script:GetAttribute("DiloBuffHits") or 0) + 1)
 	end
 	local hp = m:GetAttribute("DummyHealth")
@@ -1148,6 +1158,7 @@ script:SetAttribute("DiloMovesServerVersion", "1.14") -- v1.14 pre-match lock
 --   bodies unchanged; bots never locked: BotUse / BotMechaUse call the handlers directly).
 script:SetAttribute("DiloMovesServerVersion", "1.15") -- v1.15 Toxin Mortar impact blast (MDA-551)
 script:SetAttribute("DiloMovesServerVersion", "1.16") -- v1.16 dilo buff: part damage x1.5 (see the note at damage())
+script:SetAttribute("DiloMovesServerVersion", "1.17") -- v1.17 balance: part damage x1.15 (see the note at damage())
 -- v1.15 (MDA-551; Kepu 2026-11-15 12:46 "the actual size of the blast damage", picks "Add an impact blast", "10 / 15 / 20 by rank";
 --   SkillTree 1.95, SkillEffects 1.64): when a Toxin Mortar lands (the handler stamps DiloMortarLandAt: the cloud starts; not when
 --   a Sap Wall stopped the arc) every target inside the cloud's radius (DiloMortarRadius, flat) and CLOUD_HEIGHT (12) up / down,

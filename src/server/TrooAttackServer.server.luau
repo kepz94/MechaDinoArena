@@ -245,10 +245,21 @@ end
 for k, v in pairs({TrooDamageMul = 5, TrooBuff111Enabled = true}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
+-- v1.12 (Kepu 2026-11-27 15:39 "way too easy to get kills with the Dilo and Troodon after you boosted them"; every stat maxed: 3
+--   charges 0.35 s apart, 108-stud lock-on, splat 4 x5 = 20 (22 marked): a 3-pod volley dealt ~64 in ~1.1 s, a one-volley kill on a
+--   Herrera (40) or a Troodon (55)): while script attribute TrooBalance112Enabled ~= false (default true, read per hit) the v1.11
+--   multiplier is TrooDamageMul112 (3, read per hit): splat 12 (13.2 marked), zone 3 a second, volley ~38. false = 1.11 (x5).
+for k, v in pairs({TrooDamageMul112 = 3, TrooBalance112Enabled = true}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 local function takeHealth(m, d, killerName, killerId, with, t)
 	d *= armorMul(m) -- v1.5 (MDA-366): armor
 	if (with == "troopod" or with == "troozone") and script:GetAttribute("TrooBuff111Enabled") ~= false then -- v1.11
-		d *= math.max(0, tonumber(script:GetAttribute("TrooDamageMul")) or 5)
+		if script:GetAttribute("TrooBalance112Enabled") ~= false then -- v1.12
+			d *= math.max(0, tonumber(script:GetAttribute("TrooDamageMul112")) or 3)
+		else
+			d *= math.max(0, tonumber(script:GetAttribute("TrooDamageMul")) or 5)
+		end
 		script:SetAttribute("TrooBuffHits", (script:GetAttribute("TrooBuffHits") or 0) + 1)
 	end
 	local hp = m:GetAttribute("DummyHealth")
@@ -1124,6 +1135,7 @@ script:SetAttribute("TrooAttackServerVersion", "1.8") -- v1.8 double tap = pod t
 script:SetAttribute("TrooAttackServerVersion", "1.9") -- v1.9 practice bot slows as attributes
 script:SetAttribute("TrooAttackServerVersion", "1.10") -- v1.10 pre-match lock
 script:SetAttribute("TrooAttackServerVersion", "1.11") -- v1.11 troodon pod / zone damage x5 (see the note at takeHealth)
+script:SetAttribute("TrooAttackServerVersion", "1.12") -- v1.12 balance: pod / zone x3 (see the note at takeHealth)
 -- v1.10 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
 --   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
 --   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler

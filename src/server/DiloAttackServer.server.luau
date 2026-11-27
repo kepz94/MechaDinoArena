@@ -302,10 +302,21 @@ end
 for k, v in pairs({DiloDamageMul = 1.5, DiloSpitSpeedMul = 1.375, DiloBuff114Enabled = true}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
+-- v1.15 (Kepu 2026-11-27 15:39 "way too easy to get kills with the Dilo and Troodon after you boosted them"; every stat maxed: 5
+--   darts 0.14 s apart at 77 studs/s, dart 7.5 + venom 13.5 a second for 2.25 s after the last dart: ~75 per mag in ~3 s): while
+--   script attribute DiloBalance115Enabled ~= false (default true, read per hit) the v1.14 multiplier is DiloDamageMul115 (1.15,
+--   read per hit): dart 5.75, venom 10.35 a second, ~58 per mag. The spit speed (DiloSpitSpeedMul) is unchanged. false = 1.14 (x1.5).
+for k, v in pairs({DiloDamageMul115 = 1.15, DiloBalance115Enabled = true}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 local DILO_WITH = {dilodart = true, dilovenom = true, dilosnipe = true, dilobite = true}
 local function takeHealth(m, d, killerName, killerId, with, t)
 	if DILO_WITH[with] and script:GetAttribute("DiloBuff114Enabled") ~= false then -- v1.14
-		d *= math.max(0, tonumber(script:GetAttribute("DiloDamageMul")) or 1.5)
+		if script:GetAttribute("DiloBalance115Enabled") ~= false then -- v1.15
+			d *= math.max(0, tonumber(script:GetAttribute("DiloDamageMul115")) or 1.15)
+		else
+			d *= math.max(0, tonumber(script:GetAttribute("DiloDamageMul")) or 1.5)
+		end
 		script:SetAttribute("DiloBuffHits", (script:GetAttribute("DiloBuffHits") or 0) + 1)
 	end
 	d *= armorMul(m) -- v1.8 (MDA-366): armor
@@ -991,6 +1002,7 @@ script:SetAttribute("DiloAttackServerVersion", "1.11") -- v1.11 sniper spit (MDA
 script:SetAttribute("DiloAttackServerVersion", "1.12") -- v1.12 sniper ball 240 studs/s
 script:SetAttribute("DiloAttackServerVersion", "1.13") -- v1.13 pre-match lock
 script:SetAttribute("DiloAttackServerVersion", "1.14") -- v1.14 dilo buff: damage x1.5, spit 55 studs/s (see the note at takeHealth)
+script:SetAttribute("DiloAttackServerVersion", "1.15") -- v1.15 balance: damage x1.15 (see the note at takeHealth)
 -- v1.13 (pre-match lock, MDA-528, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 2; Kepu 2026-11-13 18:23 "all mecha abilities
 --   and actions should be unplayable ... during the count down", pick "A · Locked everywhere"): every request from a player whose
 --   character PrematchLockUntil (PracticeServer 1.12) is after the server time is dropped before the handler runs (handler
