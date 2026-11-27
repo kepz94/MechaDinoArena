@@ -45,6 +45,11 @@ local DataStoreService = game:GetService("DataStoreService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 achievements
 VERSION = "1.2" -- v1.2 launch reset
+VERSION = "1.3" -- v1.3 kills count for the "kills" quests and achievements on every server
+-- v1.3 (Kepu 2026-11-27 16:17 "Okay do 1"; bug hunt 2026-11-27: island kills could not be had alone since the island bots are off):
+--   while script attribute QuestKillsEverywhereEnabled ~= false (default true, read per kill) a kill on a non-hub server adds "ikill"
+--   as well as "akill" (dailies "Get n kills anywhere", achievements FIRST BLOOD / ISLAND HUNTER / APEX OF THE ISLAND). The streak
+--   ("istreak") follows SkinStats 1.3. false = 1.2.
 -- v1.2 (launch reset, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): QuestStoreName default "MDA_Quests_v2" (1.1: "MDA_Quests_v1"); the old data is kept as it is.
 -- v1.1 (achievements, plan docs/plans/ACHIEVEMENTS_v1.0.md Task 2; Kepu 2026-11-26 picks "Skill points by tier", "Claim at the Quest
 --   Stand", "Start fresh" + "Live state", "B · Three columns", pop-up "top centre 1 s"; red-team "OK", "Keep 2 / 5 / 10"). The 17
@@ -312,6 +317,7 @@ local function onKill(userId, victim, at)
 		s[key] = true
 	end
 	add(player, isHub() and "ikill" or "akill", 1)
+	if not isHub() and script:GetAttribute("QuestKillsEverywhereEnabled") ~= false then add(player, "ikill", 1) end -- v1.3
 	local st = states[player]
 	local sp = player.Character and player.Character:GetAttribute("Species")
 	if st and st.picks then

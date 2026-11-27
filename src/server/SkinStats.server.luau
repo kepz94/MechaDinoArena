@@ -24,6 +24,12 @@ local DataStoreService = game:GetService("DataStoreService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 island kill streak
 VERSION = "1.2" -- v1.2 store line + launch reset
+VERSION = "1.3" -- v1.3 the kill streak counts in the Arena too
+-- v1.3 (Kepu 2026-11-27 16:16 "The broken stuff you mentioned can still work if it applies to arena", 16:17 "Okay do 1"; bug hunt
+--   2026-11-27: island streaks could not be reached alone since the island bots are off): while script attribute
+--   SkinStatsStreakEverywhereEnabled ~= false (default true, read per kill) the streak counts on every server kind (island and Arena
+--   match servers), with the same rules (not in a tutorial lane, alive; reset on death, a new body or the menu). The saved best (ib)
+--   is the same value, so Zebra / Storm Front and the streak quests count Arena streaks. false = 1.2 (island only).
 -- v1.2: 1.1's header ran into the store line ("... false = 1.0.local STORE = ..."), so STORE was nil and nothing loaded or saved since
 --   v1022 (found 2026-11-26). The store is now script attribute SkinStatsStoreName (default "MDA_SkinStats_v2", launch reset,
 --   Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"; "MDA_SkinStats_v1" kept).
@@ -200,7 +206,8 @@ script:SetAttribute("IslandStreakCounted", 0)
 script:SetAttribute("IslandStreakResets", 0)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local function islandKill(player, st)
-	if script:GetAttribute("SkinStatsIslandStreakEnabled") == false or ReplicatedStorage:GetAttribute("ServerKind") ~= "hub" then return end
+	if script:GetAttribute("SkinStatsIslandStreakEnabled") == false then return end
+	if ReplicatedStorage:GetAttribute("ServerKind") ~= "hub" and script:GetAttribute("SkinStatsStreakEverywhereEnabled") == false then return end -- v1.3
 	if (tonumber(player:GetAttribute("TutLane")) or 0) > 0 then return end
 	local c = player.Character
 	local hum = c and c:FindFirstChildOfClass("Humanoid")

@@ -16,6 +16,10 @@
 -- claimable(need, have, claimed) -> have >= need and not claimed.
 local M = {}
 M.Version = "1.0"
+M.Version = "1.1" -- v1.1 kills / streaks anywhere texts, Storm Front 15
+-- v1.1 (Kepu 2026-11-27 16:17 "Okay do 1"; QuestServer 1.3 / SkinStats 1.3 count kills and streaks on every server): with
+--   M.ANYWHERE_TEXTS (true) the ikills / istreak dailies and the specials lose "on the island" ("Get 5 kills anywhere", "Reach a 5 kill
+--   streak"); with M.STORM_NEED (15; nil = 1.0's 25) s_storm needs that best streak. Ids, events and the other numbers unchanged.
 M.DAY = 86400
 M.PTS = {1, 2, 3}
 M.DIFF_NAMES = {"EASY", "MEDIUM", "HARD"}
@@ -60,6 +64,20 @@ M.SPECIALS = {
 	{id = "s_storm", ev = "ibest", need = 25, skin = "storm", name = "STORM FRONT", text = "Get a 25 kill streak on the island"},
 }
 
+M.ANYWHERE_TEXTS = true -- v1.1
+M.STORM_NEED = 15 -- v1.1
+if M.ANYWHERE_TEXTS then
+	for d = 1, 3 do -- the pools may start with nil (no easy quest of that kind)
+		local q = M.POOL.ikills[d]
+		if q then q.text = ("Get %d kills anywhere"):format(q.need) end
+		q = M.POOL.istreak[d]
+		if q then q.text = ("Reach a %d kill streak"):format(q.need) end
+	end
+end
+for _, s in ipairs(M.SPECIALS) do
+	if s.id == "s_storm" and M.STORM_NEED then s.need = M.STORM_NEED end
+	if M.ANYWHERE_TEXTS then s.text = ("Get a %d kill streak"):format(s.need) end
+end
 function M.day(t) return math.floor((tonumber(t) or 0) / M.DAY) end
 function M.secsToDay(t)
 	t = tonumber(t) or 0

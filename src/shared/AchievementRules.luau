@@ -8,6 +8,10 @@
 -- have(a, counters, live) -> the value for a's stat; claimable(a, have, claimed) -> have >= need and not claimed.
 local M = {}
 M.Version = "1.0"
+M.Version = "1.1" -- v1.1 kills / streaks anywhere texts
+-- v1.1 (Kepu 2026-11-27 16:17 "Okay do 1"; QuestServer 1.3 / SkinStats 1.3 count kills and streaks on every server): with
+--   M.ANYWHERE_TEXTS (true) the six ikill / istreak achievements lose "on the island"; names, columns (where "ISLAND"), medals and
+--   needs unchanged.
 M.PTS = {b = 2, s = 5, g = 10}
 M.MAX_STATS = {istreak = true, awstreak = true}
 M.LIVE_STATS = {dinos = true, skins = true, level = true}
@@ -33,6 +37,12 @@ M.LIST = {
 	a("quests", "QUEST FAN", "Claim 25 daily quests", "BOTH", "s", "qclaim", 25),
 	a("fashion", "FASHION DINO", "Own 5 skins", "BOTH", "b", "skins", 5),
 }
+M.ANYWHERE_TEXTS = true -- v1.1
+if M.ANYWHERE_TEXTS then
+	local T = {first = "Get your first kill", hunter = "Get 50 kills anywhere", apex = "Get 250 kills anywhere",
+		fire = "Reach a 5 kill streak", unstop = "Reach a 15 kill streak", storm = "Reach a 25 kill streak"}
+	for _, x in ipairs(M.LIST) do if T[x.id] then x.text = T[x.id] end end
+end
 M.BY_ID = {}
 for _, x in ipairs(M.LIST) do M.BY_ID[x.id] = x end
 

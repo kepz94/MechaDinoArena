@@ -449,6 +449,18 @@ if US.ISLAND_STREAK_UNLOCKS and US.STAND_CLAIMS then
 	US.SKINS.storm.unlock.claim = "stand"
 	US.SKINS.storm.unlock.text = "25 kill streak on the island, claim at the Quest Stand"
 end
+US.VERSION = "1.9" -- v1.9 streak skins: any server, Storm Front 15
+-- v1.9 (Kepu 2026-11-27 16:17 "Okay do 1"; SkinStats 1.3 counts the streak on every server): with US.STREAK_ANYWHERE (true) Zebra /
+--   Storm Front texts lose "on the island" and Storm Front needs US.STORM_NEED (15; 1.4: 25). Zebra stays 10. false = 1.8.
+US.STREAK_ANYWHERE = true -- v1.9
+US.STORM_NEED = 15 -- v1.9
+if US.STREAK_ANYWHERE and US.ISLAND_STREAK_UNLOCKS then
+	US.SKINS.storm.unlock.need = US.STORM_NEED
+	for _, id in ipairs({"zebra", "storm"}) do
+		local u = US.SKINS[id].unlock
+		u.text = u.claim == "stand" and (u.need .. " kill streak, claim at the Quest Stand") or ("Get a " .. u.need .. " kill streak")
+	end
+end
 for id, sk in pairs(US.SKINS) do
 	sk.id = id
 	if not sk.sw and sk.cols then
