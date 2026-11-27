@@ -39,6 +39,10 @@
 --   * then the whole model is scaled by LbBoardScale (1.2) about its base point on the ground (Model:ScaleTo).
 --   With the defaults the screen is 32.4 x 37.2 studs, its middle ~27.6 studs over the ground (1.0: 27 x 31, ~36.6).
 --   LbLowBoardEnabled false = the 1.0 board exactly (claws, height, size).
+-- v1.3 (Kepu 2026-11-27 12:53: the WORLDWIDE board read "#1 YOU 12W" with a 0W 0L record and no match played; the store held
+--   his own key = 12, written from a Studio playtest's ArenaW): in Studio (RunService:IsStudio()) the wins store is never
+--   written unless script attribute LbStudioSaveEnabled == true (default false, read per write); fetches still run.
+--   Diagnostic: LbLast "studio skip <name> <w>", LbStudioSkips (count).
 local Players = game:GetService("Players")
 local DataStoreService = game:GetService("DataStoreService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -49,6 +53,7 @@ local UserService = game:GetService("UserService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 low, big board, no claws
 VERSION = "1.2" -- v1.2 launch reset
+VERSION = "1.3" -- v1.3 no wins writes from Studio
 -- v1.2 (launch reset, Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): LbStoreName default "MDA_ArenaWins_v2" (1.1: "MDA_ArenaWins_v1"), so the world board starts empty; the old data is kept as it is.
 local DEFAULTS = {LbEnabled = true, LbWorldEnabled = true, LbBoardsEnabled = true, LbSaveEnabled = true,
 	LbStoreName = "MDA_ArenaWins_v2", LbRefresh = 60, LbTopN = 100, LbBoardSide = 60, LbBoardFwd = 14, LbBoardAim = 82,
@@ -82,6 +87,11 @@ local function writeWins(p)
 	if not store or p.Parent ~= Players then return end
 	local w = p:GetAttribute("ArenaW")
 	if type(w) ~= "number" or w <= 0 or written[p.UserId] == w then return end
+	if RunService:IsStudio() and script:GetAttribute("LbStudioSaveEnabled") ~= true then -- v1.3: Studio never writes the live board
+		script:SetAttribute("LbStudioSkips", (script:GetAttribute("LbStudioSkips") or 0) + 1)
+		script:SetAttribute("LbLast", ("studio skip %s %d"):format(p.Name, w))
+		return
+	end
 	written[p.UserId] = w
 	local ok, err = pcall(function() store:SetAsync("u" .. p.UserId, math.floor(w)) end)
 	if ok then
