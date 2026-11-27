@@ -3759,3 +3759,4 @@ Model numbers are generator output (old version = the flag in the last column, b
   - Studio test switch set: add FirstStepsServer `FsSaveEnabled` = false (restore to nil).
 - PracticeServer 1.19: `PrFfaRecordSeatsEnabled` (true, per result). FirstSteps 1.1: `FirstStepsStartFolded` (true, at start), `FirstStepsToastEverywhere` (true, per toast); `FirstStepsPlayEnabled` = false set in Edit (PLAY button off).
 - TrooAttackServer 1.12: `TrooDamageMul112` (3), `TrooBalance112Enabled` (true; false = 1.11 x5). DiloAttackServer 1.15: `DiloDamageMul115` (1.15), `DiloBalance115Enabled` (true; false = 1.14 x1.5). DiloMovesServer 1.17: `DiloDamageMul115` (1.15), `DiloBalance117Enabled` (true; false = 1.16 x1.5). All read per hit; `TrooBuffHits` / `DiloBuffHits` still count.
+- TrooAttackServer 1.12.1: `TrooDamageMul112` default 2.5 (1.12: 3).
