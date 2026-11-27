@@ -109,6 +109,13 @@ VERSION = "1.6" -- v1.6 Lab coach on Lab 2.0 (Lab Revamp v1.0)
 --   The buttons are found under that card (Lab 2.0 has an Actions frame on every card; 1.3's labActionBtn took the first).
 VERSION = "1.7" -- v1.7 welcome screen, dino passives, JUMP parts in step 6
 VERSION = "1.7.1" -- v1.7.1 the reveal's dino fits (wider camera)
+VERSION = "1.8" -- v1.8 the tutorial ends with the first match
+-- v1.8 (First Steps v1.0, Kepu 2026-11-27 14:15 pick "A" on docs/mockups/first_steps_v0.1.html, capture first_steps_v0.1/
+--   phone_tutorial_end.jpg): while script attribute TutFirstMatchEnabled ~= false (default true, read per draw) step 10 reads
+--   "TRAINING COMPLETE" / "LEVEL <n> <DINO>" / "Next: a real 4v4 match. Bots fill empty seats." with PLAY YOUR FIRST MATCH (yellow;
+--   sets the LOCAL player attribute FsAutoQueue = true, then sends "island" as before; FirstSteps 1.0 joins the Arena queue once the
+--   dino stands on the islet) and under it EXPLORE THE ISLAND FIRST (no fill, muted text, no outline; sends "island" only).
+--   TutFirstMatchEnabled false = 1.7.1 (GO TO THE ISLAND).
 -- v1.7.1 (Kepu 2026-11-26 03:05 live, Therizino "cut off at the top"): drawReveal sets its dino view's camera FieldOfView to the
 --   script attribute TutRevealFov (default 44; dinoView's own 30 cut Therizino, Pachy, Teno and Dilo over a turn, measured in
 --   Studio). Switch: script attribute TutorialRevealFitEnabled (default true, read per draw; false = 1.7).
@@ -2119,9 +2126,19 @@ function render()
 		backdrop()
 		local k = 0
 		for i = 1, 4 do if slotOf(i) ~= "" then k += 1 end end
+		if script:GetAttribute("TutFirstMatchEnabled") ~= false then -- v1.8: the first match
+			local col, add = sceneColumn("TRAINING COMPLETE", "LEVEL " .. tostring(player:GetAttribute("SkillLevel") or 1) .. " " .. string.upper(dinoName(dino)),
+				"Next: a real 4v4 match. Bots fill empty seats.")
+			add(cta(col, "PLAY YOUR FIRST MATCH", function() player:SetAttribute("FsAutoQueue", true) send("island") end))
+			local ex = cta(col, "EXPLORE THE ISLAND FIRST", function() player:SetAttribute("FsAutoQueue", nil) send("island") end,
+				{BackgroundTransparency = 1, TextColor3 = C.muted})
+			for _, c in ipairs(ex:GetChildren()) do if c:IsA("UIStroke") then c:Destroy() end end
+			add(ex)
+		else
 		local col, add = sceneColumn("TRAINING COMPLETE", "LEVEL " .. tostring(player:GetAttribute("SkillLevel") or 1) .. " " .. string.upper(dinoName(dino)),
 			k .. " parts equipped")
 		add(cta(col, "GO TO THE ISLAND", function() send("island") end))
+		end
 	end
 end
 

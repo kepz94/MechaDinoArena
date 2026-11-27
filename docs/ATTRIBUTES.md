@@ -3751,3 +3751,9 @@ Model numbers are generator output (old version = the flag in the last column, b
 - IslandRespawnClient 1.1 (script): `IslandPadCompact` (true, read per show; false = the v1.0 300 x 64 layout), `IslandPadW` (230), `IslandPadH` (44, min 44), `IslandPadY` (60). Diagnostic `IslandPadLayout` ("compact" / "v1.0").
 - FillerServer (2026-11-27): `FillerEnabled` = false set on the script in Edit (no filler bots on the hub island; true / nil brings them back, read at start).
 - LeaderboardServer 1.3: `LbStudioSaveEnabled` (false, read per write; true = a Studio server may write the live wins store). Diagnostics `LbStudioSkips`, `LbLast` "studio skip <name> <w>".
+- First Steps v1.0 (2026-11-27):
+  - FirstStepsServer 1.0 (script): `FsEnabled` (true, at start), `FsSaveEnabled` (true, at start; false = memory only, Studio test switch), `FsStoreName` ("MDA_FirstSteps_v1"), `FsPts` ("1,1,1,2"), `FsBonus` (3), `FsVetWait` (15 s). Diagnostics `FirstStepsServerVersion`, `FsState`, `FsLoads`, `FsFails`, `FsMarks`, `FsGrants`, `FsGrantFails`, `FsLastEvent`. Player `FsLoaded`, `FsDone` ("0000".."1111"), `FsFinished`, `FsLast` ("<step|bonus>|<pts>|<time>"), `FsVet`. Test hook BindableFunction `FsTest` ("mark" / "state" / "reset").
+  - FirstSteps 1.0 (script): `FirstStepsEnabled`, `FirstStepsPlayEnabled`, `FirstStepsCardEnabled` (true, per frame), `FsAutoQueueWait` (40 s). Player diagnostics `FirstStepsVersion`, `FirstStepsShown`, `FirstStepsLastPress`, `FirstStepsToast`; local player attribute `FsAutoQueue` (set by Tutorial 1.8, not replicated).
+  - HubServer 1.10: `HubQueueJoinRequestEnabled` (true, per request). Player `HubJoinLast`.
+  - Tutorial 1.8: `TutFirstMatchEnabled` (true, per draw). PlaytimeClient 1.2: `PlaytimeChipQueueHideEnabled` (true, per frame).
+  - Studio test switch set: add FirstStepsServer `FsSaveEnabled` = false (restore to nil).

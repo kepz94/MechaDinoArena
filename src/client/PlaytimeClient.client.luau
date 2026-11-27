@@ -25,6 +25,11 @@ local TweenService = game:GetService("TweenService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 track capped at 30 min
+VERSION = "1.2" -- v1.2 chip hides while queued
+-- v1.2 (First Steps v1.0, Kepu 2026-11-27; found in the mockup test docs/mockups/first_steps_v0.1/phone_queue_overlap_today.jpg: on
+--   phones the Arena queue pill "FINDING MATCH" (PortalHUD) sat on top of this chip, both top centre): while script attribute
+--   PlaytimeChipQueueHideEnabled ~= false (default true, read per frame) the chip (and the track) hide while player HubQueueState is
+--   "queued" or "found". false = 1.1.
 -- v1.1 (Kepu 2026-11-26 16:44 "Nah this is too crazy, cap out at 30 minutes to get the overtime skin"; points spread: standing pick, recommended): the cards follow PlaytimeServer 1.1: 5 / 10 / 15 MIN +1 PT, 20 / 25 MIN +2 PTS, 30 MIN OVERTIME SKIN.
 --   Switch: script attribute PlaytimeShortTrackEnabled (true, read at start; false = the 1.0 cards). Layout unchanged.
 script:SetAttribute("PlaytimeClientVersion", VERSION)
@@ -200,6 +205,10 @@ local function shouldShow()
 		if player:GetAttribute(a) == true then return false end
 	end
 	if (tonumber(player:GetAttribute("TutLane")) or 0) > 0 then return false end
+	if script:GetAttribute("PlaytimeChipQueueHideEnabled") ~= false then -- v1.2: the queue pill takes the top centre
+		local qs = player:GetAttribute("HubQueueState")
+		if qs == "queued" or qs == "found" then return false end
+	end
 	local tut = pg:FindFirstChild("Tutorial")
 	if tut and tut:IsA("ScreenGui") and tut.Enabled then return false end
 	local ch = player.Character

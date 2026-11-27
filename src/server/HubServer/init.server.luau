@@ -108,6 +108,13 @@ VERSION = "1.6" -- v1.6 island dino swap stays put
 VERSION = "1.7" -- v1.7 tutorial lanes skip the islet
 VERSION = "1.8" -- v1.8 one portal (ARENA, centered)
 VERSION = "1.9" -- v1.9 island respawn + return to pad
+VERSION = "1.10" -- v1.10 HubQueueRequest "join" (the lobby PLAY button)
+-- v1.10 (First Steps v1.0, Kepu 2026-11-27 14:15 pick "A" on docs/mockups/first_steps_v0.1.html, the island lobby's PLAY button,
+--   FirstSteps 1.0): RemoteEvent HubQueueRequest also takes "join": the same as walking into the ARENA portal (joinQueue: the squad
+--   leader brings the squad, others get HubLastResult "notLeader"; already queued / in a trip -> nothing), only while the queue is on
+--   (queueOn()), the player is not InMenu and its character is alive. Switch: script attribute HubQueueJoinRequestEnabled (default
+--   true, read per request; false = 1.9, "join" ignored). Diagnostic: player HubJoinLast ("ok" / "busy" / "notLeader" / "off" /
+--   "menu" / "dead").
 -- v1.9 (Kepu 2026-11-26 12:11 "WHEN A DINOSAUR DIES ON THE ISLAND, AUTO SPAWN ON THE ISLAND ITSELF NEAR OTHER DINOS NOT TOO CLOSE BUT ON THE ISLAND STILL SO PEOPLE CAN CONTINUALLY FIGHT ... GIVE A POP UP AFTER A RESPAWN FOR 2 SECONDS TO RETURN TO SPAWN PAD"): on the hub, a player whose dino dies OFF the islet (character HubInZone not true, not InMenu, not
 --   in a tutorial lane) comes back ON the island instead of the islet pad:
 --   * Death: Humanoid.Died -> diedAt[player] (opening the menu drops it). The next islet placement within IslandRespawnWindow (20) s that is a new spawn (not a
@@ -823,6 +830,18 @@ do
 		if os.clock() - (lastQ[p] or 0) < 0.3 then return end
 		lastQ[p] = os.clock()
 		if action == "leave" then leaveQueue(p) end
+		if action == "join" then -- v1.10: the lobby PLAY button
+			local r
+			if script:GetAttribute("HubQueueJoinRequestEnabled") == false or not queueOn() then
+				r = "off"
+			elseif p:GetAttribute("InMenu") == true then
+				r = "menu"
+			else
+				local hum = p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+				if not hum or hum.Health <= 0 then r = "dead" else r = joinQueue(p) end
+			end
+			p:SetAttribute("HubJoinLast", r)
+		end
 	end)
 end
 task.spawn(function()
