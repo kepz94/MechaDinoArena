@@ -29,6 +29,12 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 card starts folded, toast on every server
+-- v1.1 (Kepu 2026-11-27 14:41 "The play button being constantly there and the list being constantly open is annoying ... Remove the
+--   play button"): the PLAY button is off through FirstStepsPlayEnabled = false (set on this script in Edit; the 1.0 switch). While
+--   script attribute FirstStepsStartFolded ~= false (default true, read at start) the card starts folded to one line ("FIRST STEPS
+--   n/4" + the next step; tap the header to open / fold). While FirstStepsToastEverywhere ~= false (default true, read per toast) a
+--   step finished on the Arena match server shows its toast there too (1.0: hub servers only).
 local player = Players.LocalPlayer
 player:SetAttribute("FirstStepsVersion", VERSION)
 for k, v in pairs({FirstStepsEnabled = true, FirstStepsPlayEnabled = true, FirstStepsCardEnabled = true, FsAutoQueueWait = 40}) do
@@ -68,6 +74,8 @@ end
 
 local gui = new("ScreenGui", {Name = "FirstSteps", DisplayOrder = 30, ResetOnSpawn = false, IgnoreGuiInset = true,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = false}, pg)
+local toastGui = new("ScreenGui", {Name = "FirstStepsToast", DisplayOrder = 62, ResetOnSpawn = false, IgnoreGuiInset = true,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling}, pg) -- v1.1: the toast shows while the lobby UI is hidden (Arena server)
 
 -- ---------- PLAY ----------
 local play = new("TextButton", {Name = "Play", BackgroundColor3 = C.yellow, Text = "", AutoButtonColor = true}, gui)
@@ -141,7 +149,7 @@ play.Activated:Connect(function()
 end)
 
 -- ---------- card ----------
-local folded = false
+local folded = script:GetAttribute("FirstStepsStartFolded") ~= false -- v1.1 (1.0: false)
 local card
 local cardKey = ""
 local function drawCard(phone)
@@ -209,7 +217,7 @@ local toast
 local function showToast(t1, t2, phone)
 	if toast then toast:Destroy() end
 	toast = new("Frame", {Name = "Toast", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, phone and 112 or 130),
-		Size = UDim2.fromOffset(phone and 250 or 340, phone and 52 or 64), BackgroundColor3 = C.plate}, gui)
+		Size = UDim2.fromOffset(phone and 250 or 340, phone and 52 or 64), BackgroundColor3 = C.plate}, toastGui) -- v1.1: own gui
 	corner(toast, 12)
 	stroke(toast, C.green, 3)
 	txt(toast, t1, phone and 9 or 11, C.green, {Position = UDim2.fromOffset(0, phone and 7 or 9), Size = UDim2.new(1, 0, 0, 12),
@@ -225,7 +233,8 @@ player:GetAttributeChangedSignal("FsLast"):Connect(function()
 	local v = player:GetAttribute("FsLast")
 	if v == seenLast then return end
 	seenLast = v
-	if ReplicatedStorage:GetAttribute("ServerKind") ~= "hub" or type(v) ~= "string" then return end
+	if type(v) ~= "string" then return end
+	if ReplicatedStorage:GetAttribute("ServerKind") ~= "hub" and script:GetAttribute("FirstStepsToastEverywhere") == false then return end -- v1.1
 	local what, pts = v:match("^([^|]+)|(%d+)|")
 	pts = tonumber(pts)
 	if not what or not pts then return end

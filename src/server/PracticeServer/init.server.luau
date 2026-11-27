@@ -174,6 +174,12 @@ VERSION = "1.17" -- v1.17 the mode vote before the lineup + TDM bots
 --     (why "tdm"): they hunt enemies instead of holding, guarding or running to the point.
 --   Diagnostics: script attribute PgVoteLast ("<winner> <how: most / tie / none> <counts>").
 VERSION = "1.18" -- v1.18 Free for All
+VERSION = "1.19" -- v1.19 FFA Arena result as seats A / B
+-- v1.19 (Kepu 2026-11-27 14:41 "I played my first match and it didn't check off on the list"; Studio Arena test: the FFA report sent
+--   winner "W" and teams "W" / "L", and ArenaRecordRules.outcome only knows "A" / "B", so no record was written and ArenaW / ArenaL
+--   never rose): while script attribute PrFfaRecordSeatsEnabled ~= false (default true, read per result) a Free for All Arena result
+--   reports the top HpFfaTopWin (3) of HpFfaPlaces as team "A" and the rest as "B", winner "A", and no leaver sides (a leaver's
+--   own "left" report still counts). Diagnostic: PrArenaResult reads "A ffa <hook result>". false = 1.18.
 -- v1.18 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): the vote also offers "ffa" (script attribute PgVoteFfaEnabled ~= false, read per
 --   use; appended after PgVoteModes). PrMode "ffa" -> HardpointPractice("start", lead, "ffa") (HardpointServer 1.13); the 8 seats
 --   stay the two groups of 4. FFA bots: every job "duel" (why "ffa"; PrFfaBotsHuntEnabled ~= false). Arena result of a FFA match
@@ -904,11 +910,22 @@ local function arenaResult(w)
 		local place = {}
 		if okP and type(ids) == "table" then for i, id in ipairs(ids) do place[id] = i end end
 		local top = tonumber(hs:GetAttribute("HpFfaTopWin")) or 3
+		local seats = script:GetAttribute("PrFfaRecordSeatsEnabled") ~= false -- v1.19: ArenaRecordRules only knows "A" / "B"
 		for _, e in ipairs(list) do
 			local p = place["u" .. e.player.UserId]
-			e.team = (p and p <= top) and "W" or "L"
+			if seats then
+				e.team = (p and p <= top) and "A" or "B"
+			else
+				e.team = (p and p <= top) and "W" or "L"
+			end
 		end
-		w = "W"
+		w = seats and "A" or "W"
+		if seats then
+			local r = arenaReport("result", arena.matchId, list, w, elig, {A = false, B = false})
+			script:SetAttribute("PrArenaResult", "A ffa " .. tostring(r))
+			script:SetAttribute("PrArenaState", "done")
+			return
+		end
 	end
 	local r = arenaReport("result", arena.matchId, list, w, elig, {A = arena.leavers.A, B = arena.leavers.B})
 	script:SetAttribute("PrArenaResult", tostring(w) .. " " .. tostring(r))

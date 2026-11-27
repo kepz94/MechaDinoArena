@@ -3757,3 +3757,4 @@ Model numbers are generator output (old version = the flag in the last column, b
   - HubServer 1.10: `HubQueueJoinRequestEnabled` (true, per request). Player `HubJoinLast`.
   - Tutorial 1.8: `TutFirstMatchEnabled` (true, per draw). PlaytimeClient 1.2: `PlaytimeChipQueueHideEnabled` (true, per frame).
   - Studio test switch set: add FirstStepsServer `FsSaveEnabled` = false (restore to nil).
+- PracticeServer 1.19: `PrFfaRecordSeatsEnabled` (true, per result). FirstSteps 1.1: `FirstStepsStartFolded` (true, at start), `FirstStepsToastEverywhere` (true, per toast); `FirstStepsPlayEnabled` = false set in Edit (PLAY button off).
