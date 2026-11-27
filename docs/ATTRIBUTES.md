@@ -3748,3 +3748,4 @@ Model numbers are generator output (old version = the flag in the last column, b
   - SquadRules 1.4: ReplicatedStorage `HardpointFfaRules` (switch, default on). PracticeBrain 1.2: enemiesOf(team, bots, self).
   - PracticeServer 1.18: `PgVoteFfaEnabled` (true), `PrFfaBotsHuntEnabled` (true).
   - HardpointHUD 1.17: `HardpointHUDFfaEnabled` (true). PrematchCountdown 1.3: `PrematchFfaEnabled` (true). PregameScreen 1.11: `PregameFfaEnabled` (true). HardpointPointFX 1.2: same `HardpointPointFXTdmHideEnabled`. GameSounds 1.23: `GameSoundsFfaResultEnabled` (true; quiet rules share `GameSoundsTdmQuietEnabled`). TeamTags 1.3: `TeamTagsFfaEnabled` (true). KillFeed 1.6: `KillFeedFfaEnabled` (true).
+- IslandRespawnClient 1.1 (script): `IslandPadCompact` (true, read per show; false = the v1.0 300 x 64 layout), `IslandPadW` (230), `IslandPadH` (44, min 44), `IslandPadY` (60). Diagnostic `IslandPadLayout` ("compact" / "v1.0").
