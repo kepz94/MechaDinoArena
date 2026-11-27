@@ -1,0 +1,177 @@
+<title>First Steps v0.1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#151a23; --panel2:#1b2230; --line:#283143;
+  --fg:#e9edf5; --mute:#97a1b4; --yellow:#ffc832; --green:#46e08a; --volt:#7fe9ff; --pink:#ff6b84;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 Inter,system-ui,sans-serif;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:Fredoka,Inter,system-ui,sans-serif;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:clamp(28px,5vw,40px)}
+h2{font-size:24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+h3{font-size:17px}
+p{margin:0}
+a{color:var(--volt)}
+.tag{font:600 11px/1 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.head{display:flex;flex-direction:column;gap:10px}
+.head p{color:var(--mute);max-width:70ch}
+.pill{display:inline-block;font:600 11px/1 Inter;letter-spacing:.1em;text-transform:uppercase;padding:6px 9px;border-radius:999px;border:1px solid currentColor;color:var(--yellow)}
+.pill.rec{color:var(--green)}
+section{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+figure img{display:block;width:100%;height:auto;cursor:zoom-in}
+.warn img{display:block;width:100%;height:auto;border-radius:10px;cursor:zoom-in}
+figcaption{padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+figcaption b{font-family:Fredoka,Inter;font-weight:600;font-size:15px}
+figcaption span{color:var(--mute);font-size:13.5px}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+li{max-width:72ch}
+.note{color:var(--mute);font-size:13.5px}
+.warn{border-color:#5a3a1d;background:#1f1912}
+.warn h3{color:var(--yellow)}
+.q{display:flex;gap:14px;align-items:flex-start;flex-direction:row}
+.q .n{flex:0 0 34px;height:34px;border-radius:9px;background:var(--panel2);display:grid;place-items:center;font-family:Fredoka;font-weight:700;color:var(--yellow)}
+.q > div:last-child{display:flex;flex-direction:column;gap:6px;min-width:0}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13.5px;background:var(--panel2)}
+.opt.r{border-color:var(--green);color:var(--green)}
+.src{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.tw{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1.2 Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+#lb{position:fixed;inset:0;background:rgba(5,7,10,.94);display:grid;place-items:center;padding:16px;z-index:20;cursor:zoom-out}
+#lb[hidden]{display:none}
+#lb img{max-width:100%;max-height:100%;border-radius:8px}
+</style>
+
+<div class="wrap">
+
+<header class="head">
+  <span class="tag">Mecha Dino Arena · First Steps + PLAY · Mockup v0.1 · built on v1086</span>
+  <h1>Arena-first lobby with a first-steps checklist</h1>
+  <p>Your pick: A (the island is the lobby, one obvious PLAY into the Arena queue) with C (a first-steps checklist). Every screen below is a real Studio playtest capture, phone (iPhone 13 Pro emulation, 844 x 390 like yours) and PC. Throwaway prototype, nothing saved to the place. The PLAY press in the queued capture used the real Arena queue.</p>
+</header>
+
+<section>
+  <h2>Where a new player is today</h2>
+  <div class="pair">
+    <figure><img src="first_steps_v0.1/phone_today.jpg" alt="Phone: the islet today, portal ahead, no direction" loading="lazy">
+      <figcaption><b>Today, after the tutorial</b><span>Standing on the islet facing the ARENA portal. Nothing on screen says what to do, and attack is locked (safe area). Until v1086, bots were fighting just past the bridge.</span></figcaption></figure>
+    <figure><img src="first_steps_v0.1/phone_tutorial_end.jpg" alt="Phone: new tutorial end screen with PLAY YOUR FIRST MATCH" loading="lazy">
+      <figcaption><b>New: the tutorial ends with a match</b><span>"PLAY YOUR FIRST MATCH" joins the Arena queue straight away (bots fill empty seats). "EXPLORE THE ISLAND FIRST" goes to the island like today. Same for all three options.</span></figcaption></figure>
+  </div>
+</section>
+
+<section>
+  <h2><span class="pill rec">Recommended</span> Option A · corner PLAY + side checklist</h2>
+  <div class="pair">
+    <figure><img src="first_steps_v0.1/phone_A_corner_play.jpg" alt="Phone option A: PLAY under EMOTE, checklist card on the left" loading="lazy">
+      <figcaption><b>Phone</b><span>PLAY sits under EMOTE (right thumb, above JUMP). FIRST STEPS card on the left under the health bar, tap to fold it to one line.</span></figcaption></figure>
+    <figure><img src="first_steps_v0.1/pc_A_corner_play.jpg" alt="PC option A: big PLAY bottom right, checklist card on the left" loading="lazy">
+      <figcaption><b>PC</b><span>Big PLAY in the empty bottom-right corner (like BedWars / Fortnite lobbies), modes listed under it. Same card on the left.</span></figcaption></figure>
+    <figure><img src="first_steps_v0.1/phone_A_queued.jpg" alt="Phone option A after PLAY: QUEUED, finding match pill" loading="lazy">
+      <figcaption><b>After PLAY</b><span>Real Arena queue: the FINDING MATCH pill shows at the top; PLAY turns into QUEUED · TAP TO LEAVE. You can still walk around.</span></figcaption></figure>
+    <figure><img src="first_steps_v0.1/phone_A_step_done.jpg" alt="Phone option A: step 1 ticked, +1 skill point toast" loading="lazy">
+      <figcaption><b>A step done</b><span>Step 1 ticks green, "FIRST STEP DONE · +1 SKILL POINT", step 2 becomes the active row.</span></figcaption></figure>
+  </div>
+  <p class="note">Why A: the button never moves and never covers the middle of the screen, it's where thumbs already are, and the checklist is readable at a glance. Trade-off: two separate pieces of HUD.</p>
+</section>
+
+<section>
+  <h2><span class="pill">Option B</span> one top bar · PLAY + next step</h2>
+  <div class="pair">
+    <figure><img src="first_steps_v0.1/phone_B_top_bar.jpg" alt="Phone option B: top bar with PLAY and the next step" loading="lazy">
+      <figcaption><b>Phone, closed</b><span>One bar under the gift timer: PLAY on the left, the current step on the right. Smallest footprint.</span></figcaption></figure>
+    <figure><img src="first_steps_v0.1/phone_B_top_bar_open.jpg" alt="Phone option B open: the checklist drops down" loading="lazy">
+      <figcaption><b>Phone, open</b><span>Tap the bar to drop the full list. It covers the middle while open.</span></figcaption></figure>
+    <figure><img src="first_steps_v0.1/pc_B_top_bar_open.jpg" alt="PC option B open" loading="lazy">
+      <figcaption><b>PC, open</b><span>Same bar, top centre.</span></figcaption></figure>
+  </div>
+  <p class="note">Trade-off: tidy, but PLAY is up top, away from the thumbs, and it shares the top centre with the gift timer, the queue pill and the respawn button.</p>
+</section>
+
+<section>
+  <h2><span class="pill">Option C</span> walk to the portal · no new button</h2>
+  <div class="pair">
+    <figure><img src="first_steps_v0.1/phone_C_portal_guide.jpg" alt="Phone option C: PLAY HERE label over the portal" loading="lazy">
+      <figcaption><b>Phone</b><span>A pulsing "PLAY HERE · ARENA 4V4" label over the portal and yellow chevrons on the ground from you to it (they run behind your dino in this shot). Same card on the left.</span></figcaption></figure>
+    <figure><img src="first_steps_v0.1/pc_C_portal_guide.jpg" alt="PC option C" loading="lazy">
+      <figcaption><b>PC</b><span>Rivals-style: you walk into the queue. Closest to how the game works now.</span></figcaption></figure>
+  </div>
+  <p class="note">Trade-off: cheapest to build and keeps the portal special, but a new player still has to walk there every time, and the label only helps while the portal is on screen.</p>
+</section>
+
+<section>
+  <div class="card warn">
+    <h3>Found while testing (live today)</h3>
+    <p>On phones the Arena queue pill "FINDING MATCH" draws on top of the playtime gift timer, both top centre:</p>
+    <img src="first_steps_v0.1/phone_queue_overlap_today.jpg" alt="Phone today: FINDING MATCH pill overlaps the REWARD READY chip" loading="lazy">
+    <p class="note">Whatever option you pick, the build hides or moves the gift timer while you're queued. Flagging it because it's live now.</p>
+  </div>
+</section>
+
+<section>
+  <h2>What the research says</h2>
+  <div class="grid3">
+    <div class="card"><h3>Get to the fun fast</h3><p class="note">Roblox's own onboarding guide: teach controls and the core loop, then get players into the fun quickly, with early levels and rewards coming fast. Success is measured by Day 1 retention.</p></div>
+    <div class="card"><h3>Point, don't lecture</h3><p class="note">Roblox's techniques page: spotlight one button, show a trail or arrow to where to go, and give timed hints only to players who seem stuck. That's the PLAY pulse and Option C's chevrons.</p></div>
+    <div class="card"><h3>Quests teach by doing</h3><p class="note">Roblox's quest design guide: break features into one quest each, with the reward scaled to the effort. That's the 4-step list: one step per thing you've built (Arena, Lab, Quest Stand).</p></div>
+  </div>
+  <p class="note">Rivals, the closest arena game, has no menu: you walk onto queue pads in the lobby, with a shooting range to practise in. That's Option C. BedWars-style lobbies use one big PLAY button that opens the queue, which is Option A. (The BedWars detail is from my own knowledge; the article I found didn't cover it.)</p>
+</section>
+
+<section>
+  <h2>The checklist (same in every option)</h2>
+  <div class="tw"><table>
+    <tr><th>#</th><th>Step</th><th>Done when</th><th>Reward</th></tr>
+    <tr><td>1</td><td>PLAY YOUR FIRST MATCH</td><td>An Arena match finishes (win or lose, bots count)</td><td>+1 skill point</td></tr>
+    <tr><td>2</td><td>SPEND A POINT IN THE LAB</td><td>A skill point is spent</td><td>+1 skill point</td></tr>
+    <tr><td>3</td><td>CLAIM A QUEST AT THE STAND</td><td>Any quest claimed at the Quest Stand</td><td>+1 skill point</td></tr>
+    <tr><td>4</td><td>WIN AN ARENA MATCH</td><td>An Arena win</td><td>+2 skill points</td></tr>
+    <tr><td></td><td>All 4 done</td><td>Card says FIRST STEPS COMPLETE and goes away</td><td>+3 bonus skill points</td></tr>
+  </table></div>
+  <p class="note">Shown only to players who haven't finished it (saved per player). Old players who already have Arena games see it pre-ticked or not at all; your call below.</p>
+</section>
+
+<section>
+  <h2>Your call</h2>
+  <div class="card q"><div class="n">1</div><div><h3>Which layout?</h3>
+    <div class="opts"><span class="opt r">A · corner PLAY + side card (rec)</span><span class="opt">B · one top bar</span><span class="opt">C · walk to the portal</span></div></div></div>
+  <div class="card q"><div class="n">2</div><div><h3>Tutorial end</h3>
+    <div class="opts"><span class="opt r">PLAY YOUR FIRST MATCH + explore link (rec)</span><span class="opt">Keep GO TO THE ISLAND</span></div></div></div>
+  <div class="card q"><div class="n">3</div><div><h3>The 4 steps and rewards</h3>
+    <div class="opts"><span class="opt r">As in the table (rec)</span><span class="opt">Change steps or rewards (tell me)</span></div></div></div>
+  <div class="card q"><div class="n">4</div><div><h3>Players who already played</h3>
+    <div class="opts"><span class="opt r">Tick what they've already done (rec)</span><span class="opt">Hide it for them</span><span class="opt">Everyone starts at 0</span></div></div></div>
+  <div class="card q"><div class="n">5</div><div><h3>Keep the ARENA portal?</h3>
+    <div class="opts"><span class="opt r">Keep it as a second way in (rec)</span><span class="opt">PLAY only</span></div>
+    <p class="note">Nothing gets built until you pick.</p></div></div>
+</section>
+
+<section>
+  <h2>Sources</h2>
+  <div class="card src">
+    <a href="https://create.roblox.com/docs/production/game-design/onboarding">Onboarding (Roblox Creator Docs)</a>
+    <a href="https://create.roblox.com/docs/en-us/production/game-design/onboarding-techniques">Onboarding techniques (Roblox Creator Docs)</a>
+    <a href="https://create.roblox.com/docs/production/game-design/introduction-to-quest-design">Introduction to quest design (Roblox Creator Docs)</a>
+    <a href="https://www.mumuplayer.com/blog/roblox-rivals-beginner-guide.html">Roblox Rivals beginner's guide (MuMu Player)</a>
+  </div>
+</section>
+
+</div>
+<div id="lb" hidden><img alt=""></div>
+<script>
+const lb=document.getElementById('lb'),li=lb.querySelector('img');
+document.querySelectorAll('figure img, .warn img').forEach(i=>i.addEventListener('click',()=>{li.src=i.src;li.alt=i.alt;lb.hidden=false}));
+lb.addEventListener('click',()=>{lb.hidden=true});
+</script>
