@@ -1,0 +1,178 @@
+<title>Admin Events v0.1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#0d1016; --panel:#151a23; --panel2:#1b2230; --line:#283143;
+  --fg:#e9edf5; --mute:#97a1b4; --storm:#7fb8ff; --alien:#52f08a; --admin:#ff5a5a; --gold:#ffcf4a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 Inter,system-ui,sans-serif;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 64px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:Fredoka,Inter,system-ui,sans-serif;margin:0;text-wrap:balance;letter-spacing:.01em}
+h1{font-size:clamp(28px,5vw,40px)}
+h2{font-size:24px;display:flex;align-items:center;gap:10px}
+h3{font-size:17px}
+p{margin:0}
+a{color:var(--storm)}
+.tag{font:600 11px/1 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.head{display:flex;flex-direction:column;gap:10px}
+.head p{color:var(--mute);max-width:68ch}
+.pill{display:inline-block;font:600 11px/1 Inter;letter-spacing:.1em;text-transform:uppercase;padding:6px 9px;border-radius:999px;border:1px solid currentColor}
+.storm{color:var(--storm)} .alien{color:var(--alien)} .admin{color:var(--admin)}
+section{display:flex;flex-direction:column;gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.shots{display:grid;grid-template-columns:1fr;gap:14px}
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+figure img{display:block;width:100%;height:auto;cursor:zoom-in}
+figcaption{padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+figcaption b{font-family:Fredoka,Inter;font-weight:600;font-size:15px}
+figcaption span{color:var(--mute);font-size:13.5px}
+.wide{grid-column:1/-1}
+ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+li{max-width:70ch}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.rule{background:var(--panel2);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:2px}
+.rule .k{font:600 11px/1.2 Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.rule .v{font-family:Fredoka,Inter;font-size:18px;font-weight:600}
+.num{font-family:Fredoka,Inter,system-ui,sans-serif;font-size:30px;font-weight:700;color:var(--gold)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px/1.2 Inter;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.tw{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px}
+.rec{color:var(--alien);font-weight:600}
+.card.q{flex-direction:row;gap:14px;align-items:flex-start}
+.q .n{flex:0 0 34px;height:34px;border-radius:9px;background:var(--panel2);display:grid;place-items:center;font-family:Fredoka;font-weight:700;color:var(--gold)}
+.q > div:last-child{display:flex;flex-direction:column;gap:6px;min-width:0}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:13.5px;background:var(--panel2)}
+.opt.r{border-color:var(--alien);color:var(--alien)}
+.note{color:var(--mute);font-size:13.5px}
+.src{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+#lb[hidden]{display:none}
+#lb{position:fixed;inset:0;background:rgba(5,7,10,.94);display:grid;place-items:center;padding:16px;z-index:20;cursor:zoom-out}
+#lb img{max-width:100%;max-height:100%;border-radius:8px}
+</style>
+
+<div class="wrap">
+
+<header class="head">
+  <span class="tag">Mecha Dino Arena · Admin Events · Mockup v0.1 · built on v1075</span>
+  <h1>Admin abuse events</h1>
+  <p>Real in-game captures from Studio (a throwaway prototype, nothing saved to the place). Two events built on your ideas: a lightning storm that strikes random dinos in the lobby with an event skin, and an alien ship that drops crates across the island. Plus the admin panel only you would see. Picks at the bottom.</p>
+</header>
+
+<section>
+  <h2>What the big games do</h2>
+  <div class="grid3">
+    <div class="card">
+      <span class="num">21.1M</span>
+      <h3>Grow a Garden</h3>
+      <p class="note">Admin abuse about weekly, roughly 1 hour before each update. Admin-only weathers (Disco, Black Hole, Tornado and more) hit plants with mutations. Weather shows as a sky change plus a label.</p>
+    </div>
+    <div class="card">
+      <span class="num">20M</span>
+      <h3>Steal a Brainrot</h3>
+      <p class="note">Events start on the hour and run 5 to 15 min. Admin events (Tacos Rain, Fire, Glitch, Crab Rave) strike random brainrots to give traits and multipliers. Players can also trigger smaller events.</p>
+    </div>
+    <div class="card">
+      <span class="num">~1M after</span>
+      <h3>The catch</h3>
+      <p class="note">The Aug 23, 2025 "admin war" peaked both games at 20M+ concurrent, promoted on TikTok, X and Discord, then both fell back near 1M. Event loot that outshines normal play makes the regular game feel empty.</p>
+    </div>
+  </div>
+  <div class="card">
+    <h3>What this mockup takes from that</h3>
+    <ul>
+      <li><b>Fixed slot, announced ahead.</b> A countdown banner on every server so players know when to log in (the "wake up and play" hook).</li>
+      <li><b>Random strikes on people who are there.</b> Only active players get struck, so being online is the reward.</li>
+      <li><b>Cosmetic, not power.</b> Event skins and a rare drop; points and eggs, never stats that beat normal progression.</li>
+      <li><b>Short.</b> 5 to 10 minutes, then back to the regular game.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <h2><span class="pill storm">Event 1</span> Lightning Storm</h2>
+  <div class="shots">
+    <figure><img src="admin_events_v0.1/1_announce.jpg" alt="Announcement banner: Admin event, all servers, Lightning Storm in 1:47" loading="lazy">
+      <figcaption><b>1 · The heads-up</b><span>Banner on every server before it starts: "ADMIN EVENT · ALL SERVERS / LIGHTNING STORM IN 1:47".</span></figcaption></figure>
+    <figure><img src="admin_events_v0.1/2_storm.jpg" alt="Storm sky with a bolt striking a dino and the event feed" loading="lazy">
+      <figcaption><b>2 · The storm</b><span>Sky darkens, rain, bolts land on random dinos. Banner counts time left and dinos struck. Left feed lists who got hit.</span></figcaption></figure>
+    <figure class="wide"><img src="admin_events_v0.1/3_struck.jpg" alt="Bolt strikes the player, popup Struck by lightning, Thunderstruck event skin" loading="lazy">
+      <figcaption><b>3 · You got struck</b><span>Bolt hits you, popup "STRUCK BY LIGHTNING! / THUNDERSTRUCK". The new skin, separate from Storm Front (that stays the 25-kill streak reward).</span></figcaption></figure>
+  </div>
+  <div class="rules">
+    <div class="rule"><span class="k">Length</span><span class="v">5 min</span></div>
+    <div class="rule"><span class="k">Strike rate</span><span class="v">1 every 20 to 30 s</span></div>
+    <div class="rule"><span class="k">Who can be hit</span><span class="v">Active players only</span></div>
+    <div class="rule"><span class="k">Reward</span><span class="v">Thunderstruck skin</span></div>
+    <div class="rule"><span class="k">Already own it</span><span class="v">+3 skill points</span></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="pill alien">Event 2</span> Alien Drop</h2>
+  <div class="shots">
+    <figure><img src="admin_events_v0.1/4_alien_drop.jpg" alt="UFO beams a crate down, hold prompt on a crate" loading="lazy">
+      <figcaption><b>4 · The drop</b><span>UFO flies over the island beaming crates down. Green beacons mark them. "E HOLD TO OPEN" prompt. Banner: "6 OF 10 CRATES LEFT".</span></figcaption></figure>
+    <figure><img src="admin_events_v0.1/5_crate_opened.jpg" alt="Popup Alien crate opened, +3 skill points" loading="lazy">
+      <figcaption><b>5 · Crate opened</b><span>"ALIEN CRATE OPENED / +3 SKILL POINTS", with the odds line for the rare UFO skin.</span></figcaption></figure>
+  </div>
+  <div class="rules">
+    <div class="rule"><span class="k">Crates</span><span class="v">10 per event</span></div>
+    <div class="rule"><span class="k">Open</span><span class="v">Hold 3 s</span></div>
+    <div class="rule"><span class="k">Loot</span><span class="v">Skill points or an egg</span></div>
+    <div class="rule"><span class="k">Rare</span><span class="v">1 in 20: UFO skin</span></div>
+    <div class="rule"><span class="k">Length</span><span class="v">10 min or all opened</span></div>
+  </div>
+  <p class="note">Your mecha-parts idea is held back on purpose: exclusive parts are new models plus balance work, and event-only power is the thing that hurt the big games. Recommended: crates first, parts later as cosmetic variants if events land.</p>
+</section>
+
+<section>
+  <h2><span class="pill admin">Admin</span> Your control panel</h2>
+  <figure><img src="admin_events_v0.1/6_admin_panel.jpg" alt="Admin events panel with event cards, where, starts in, length, extras, banner and start button" loading="lazy">
+    <figcaption><b>6 · Only you see this</b><span>Pick the event, all servers or this one, start now or in 1 or 5 min, length, an optional extra (2X XP, lucky hits), custom banner text, then START EVENT. Shows the next scheduled event.</span></figcaption></figure>
+  <p class="note">Blizzard (Frostbitten) and Meteor Shower (Meteorite) are on the panel as future cards; they reuse the Lightning Storm code with different sky and skin.</p>
+</section>
+
+<section>
+  <h2>Your call</h2>
+  <div class="card q"><div class="n">1</div><div><h3>Which events in the first build?</h3>
+    <div class="opts"><span class="opt r">Storm + Alien Drop (rec)</span><span class="opt">Storm only</span><span class="opt">All four</span></div></div></div>
+  <div class="card q"><div class="n">2</div><div><h3>Where do crates land?</h3>
+    <div class="opts"><span class="opt r">Lobby island only (rec)</span><span class="opt">Island + inside Arena matches</span></div>
+    <p class="note">Island only keeps matches fair and works for every mode.</p></div></div>
+  <div class="card q"><div class="n">3</div><div><h3>Crate loot</h3>
+    <div class="opts"><span class="opt r">Points, eggs, 1 in 20 UFO skin (rec)</span><span class="opt">Add exclusive mecha parts</span></div></div></div>
+  <div class="card q"><div class="n">4</div><div><h3>Do event skins stay?</h3>
+    <div class="opts"><span class="opt r">Keep forever, only earnable in events (rec)</span><span class="opt">Only while the event runs</span></div></div></div>
+  <div class="card q"><div class="n">5</div><div><h3>Schedule</h3>
+    <div class="opts"><span class="opt r">Weekly slot + start any time from the panel (rec)</span><span class="opt">Panel only</span></div>
+    <p class="note">Weekly slot shown on the panel as Saturday 1:00 PM MT. Tell me a different day or time if you want one.</p></div></div>
+  <div class="card q"><div class="n">6</div><div><h3>Anything to change on the screens above?</h3>
+    <p class="note">Banner, popup, feed, crate prompt, panel layout. Builds start only after your picks.</p></div></div>
+</section>
+
+<section>
+  <h2>Sources</h2>
+  <div class="card src">
+    <a href="https://www.digitalcitizen.life/grow-a-garden-admin-abuse-schedule/">Grow a Garden admin abuse schedule (Digital Citizen)</a>
+    <a href="https://www.ginx.tv/en/weather-events-grow-a-garden">Grow a Garden weather events (GINX)</a>
+    <a href="https://progameguides.com/roblox/all-steal-a-brainrot-events-weather-admin-and-spawnable-events-guide/">Steal a Brainrot events guide (Pro Game Guides)</a>
+    <a href="https://www.tubefilter.com/2025/08/25/roblox-grow-garden-steal-brainrot-admin-war-record/amp/">Admin war concurrency record (Tubefilter)</a>
+    <a href="https://beebom.com/admin-abuse-might-save-dying-roblox-games-but-hurts-them-in-the-long-run">Admin abuse long-term effects (Beebom)</a>
+  </div>
+</section>
+
+</div>
+<div id="lb" hidden><img alt=""></div>
+<script>
+const lb=document.getElementById('lb'),li=lb.querySelector('img');
+document.querySelectorAll('figure img').forEach(i=>i.addEventListener('click',()=>{li.src=i.src;li.alt=i.alt;lb.hidden=false}));
+lb.addEventListener('click',()=>{lb.hidden=true});
+</script>
