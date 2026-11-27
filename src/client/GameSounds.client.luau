@@ -186,6 +186,10 @@ VERSION = "1.18" -- v1.18 the Raptor's buttons on their beats (round 17 picks)
 VERSION = "1.19" -- v1.19 the Dilo's buttons on their beats (round 18 picks)
 VERSION = "1.20" -- v1.20 the Herrera's buttons on their beats (round 19 picks)
 VERSION = "1.21" -- v1.21 the Troodon's buttons on their beats (round 20 picks)
+VERSION = "1.22" -- v1.22 no point lines in Team Deathmatch
+-- v1.22 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Hardpoint HpMode == "tdm" and script attribute
+--   GameSoundsTdmQuietEnabled ~= false (read per check), the intro line (vointro1 / vointro2 talk about the hardpoint) and the
+--   "moving" warning are not played. Every other sound as 1.21.
 -- v1.2 (MDA-552; Kepu 2026-11-16 15:27 picks from the Sound Pick Board round 2: "hurt C, died C"): two original sounds in the punchy
 --   real style (hurt = crunchy punch with a metal tick, 0.30 s; died = low dying growl and thud, 1.50 s), files
 --   docs/sfx/MDA_SFX_hurt.wav / MDA_SFX_died.wav, imported through Studio's Asset Manager. New events "hurt" and "died" (header).
@@ -1521,6 +1525,7 @@ task.spawn(function()
 		if not ends then return end
 		local left = ends - workspace:GetServerTimeNow()
 		if ph == "warmup" and introFor ~= ends and script:GetAttribute("GameSoundsIntroEnabled") ~= false -- v1.17 the intro line
+			and not (hp:GetAttribute("HpMode") == "tdm" and script:GetAttribute("GameSoundsTdmQuietEnabled") ~= false) -- v1.22
 			and left <= num("GameSoundsIntroAt", 9) then
 			introFor = ends
 			if left >= num("GameSoundsIntroAt", 9) - num("GameSoundsIntroLate", 0.5) then
@@ -1542,7 +1547,7 @@ task.spawn(function()
 		else
 			lastTick = nil
 		end
-		if ph == "live" then
+		if ph == "live" and not (hp:GetAttribute("HpMode") == "tdm" and script:GetAttribute("GameSoundsTdmQuietEnabled") ~= false) then -- v1.22: + not TDM
 			local idx = hp:GetAttribute("HpIndex")
 			if left > 0 and left <= num("GameSoundsMoveWarn", 5) and warnedIndex ~= idx then
 				warnedIndex = idx

@@ -67,6 +67,9 @@ local VERSION = "1.5"
 VERSION = "1.6" -- v1.6 mixed bots
 VERSION = "1.7" -- v1.7 hidden while the pre-game screen shows
 VERSION = "1.8" -- v1.8 no park while the arrival loader is up
+VERSION = "1.9" -- v1.9 hidden while the vote screen shows
+-- v1.9 (Arena modes, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): also hidden while ReplicatedStorage.Practice PgPhase == "vote" and the VoteScreen
+--   LocalScript is there with VoteScreenEnabled ~= false. Switch: script attribute PracticeLobbyVoteHide (default true, per frame).
 -- v1.8 (MDA-598; Kepu 2026-11-26 07:20 live v1032 "sitting on 95 percent for a long ass time ... i also didnt get to pick a dino or
 --   see the presentation"). Cause: on an Arena arrival ModeServer sets InMenu false (mdaPlay) before PracticeServer's arrive() sets
 --   PrInLobby true. The PrInLobby handler below sent DinoModeRequest "menu" at once, with no loader check (the v1.5 Heartbeat
@@ -559,6 +562,8 @@ RunService.RenderStepped:Connect(function()
 		local ph = state:GetAttribute("PgPhase")
 		local ps = script.Parent and script.Parent:FindFirstChild("PregameScreen")
 		if (ph == "lineup" or ph == "intro") and ps and ps:GetAttribute("PregameScreenEnabled") ~= false then show = false end
+		local vs = script.Parent and script.Parent:FindFirstChild("VoteScreen") -- v1.9
+		if ph == "vote" and vs and vs:GetAttribute("VoteScreenEnabled") ~= false and script:GetAttribute("PracticeLobbyVoteHide") ~= false then show = false end
 	end
 	gui.Enabled = show
 	if show ~= wasShown then

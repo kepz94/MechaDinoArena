@@ -157,6 +157,22 @@ VERSION = "1.13" -- v1.13 respawn hold: park, place on release
 VERSION = "1.14" -- v1.14 respawn: place once
 VERSION = "1.15" -- v1.15 results freeze: no more fighting once the match is won
 VERSION = "1.16" -- v1.16 Arena fill bots pass as players (personas)
+VERSION = "1.17" -- v1.17 the mode vote before the lineup + TDM bots
+-- v1.17 (Arena modes, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones):
+--   * the mode vote: while script attribute PgVoteEnabled ~= false, the pre-game is on and this is the Arena (or
+--     PgVoteArenaOnly == false), a lobby with humans first runs the vote (read per tick): PgPhase "vote", PgEndsAt = the vote's
+--     end (PgVoteSecs, 15 s from the first human), PrStartAt held at the vote's end + 1 + the lineup time. Humans vote with
+--     RemoteEvent ReplicatedStorage.ModeVote(mode) (any of PgVoteModes "hardpoint,tdm"; switch any time; bots never vote;
+--     player attributes PgVote, PgVoteResult "ok" / "closed" / "notInLobby" / "badArg" / "busy"). It ends at PgEndsAt or as soon
+--     as every human in the lobby has voted. The winner: the most votes; a tie or no votes = among the tied (no votes: all
+--     modes) the ones not played last on this server, at random (a fresh server: at random among them). The winner shows for
+--     PgVoteFlash (1) s (PgVoteWinner set, PgEndsAt = now), then PrStartAt = now + the lineup time and the lineup runs as 1.16.
+--     Practice state: PgVoteModes, PgVotes (JSON {mode = votes, current humans only}), PgVoteWinner, PgVoteHumans, PgVoteSecs,
+--     PrMode (the mode picked; "hardpoint" until a vote picks). Every human leaving resets the vote; the lobby after a match
+--     (toLobby) votes again. The match starts with HardpointPractice("start", lead, PrMode) (HardpointServer 1.12).
+--   * TDM bots: while PrMode is "tdm" (and PrTdmBotsHuntEnabled ~= false, read per team pass) every bot's job is "duel"
+--     (why "tdm"): they hunt enemies instead of holding, guarding or running to the point.
+--   Diagnostics: script attribute PgVoteLast ("<winner> <how: most / tie / none> <counts>").
 -- v1.15 (Kepu 2026-11-24 22:37 "once the game is done then it just goes into presentation mode and no more fighting in the
 --   background"): when Hardpoint HpPhase turns "results" in a match (phase "match"), everyone stops:
 --   * every living human's HumanoidRootPart is server-owned and anchored where it stands (velocity zeroed) and the character
@@ -339,6 +355,68 @@ local lastNewBots = 0
 local function pgOn() return get("PrPregameEnabled") ~= false and R.PG_LINEUP ~= nil end
 local pgIntroEnds = nil -- server time the intro ends; nil = not in the intro
 local function autoStart() return pgOn() and R.PG_LINEUP or get("PrAutoStart") end
+-- v1.17: the mode vote (see the header); one table, so the script's locals stay few
+local MV = {by = {}, endsAt = nil, winner = nil, flashEnds = nil, done = false, mode = "hardpoint", last = nil, lastReq = {}}
+for k, v in pairs({PgVoteEnabled = true, PgVoteArenaOnly = true, PgVoteSecs = 15, PgVoteFlash = 1, PgVoteModes = "hardpoint,tdm"}) do
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
+set("PrMode", MV.mode)
+function MV.on()
+	return script:GetAttribute("PgVoteEnabled") ~= false and pgOn() and (ARENA or script:GetAttribute("PgVoteArenaOnly") == false)
+end
+function MV.modes()
+	local t = {}
+	for m in string.gmatch(tostring(script:GetAttribute("PgVoteModes") or ""), "[%a]+") do
+		if (m == "hardpoint" or m == "tdm") and not table.find(t, m) then table.insert(t, m) end
+	end
+	if #t == 0 then t = {"hardpoint"} end
+	return t
+end
+function MV.active() return MV.endsAt ~= nil and not MV.done end
+function MV.counts()
+	local c = {}
+	for _, m in ipairs(MV.modes()) do c[m] = 0 end
+	for _, h in ipairs(humans) do
+		local v = MV.by[h.player.UserId]
+		if v and c[v] then c[v] += 1 end
+	end
+	return c
+end
+function MV.allIn()
+	if #humans == 0 then return false end
+	for _, h in ipairs(humans) do if not MV.by[h.player.UserId] then return false end end
+	return true
+end
+function MV.pick(c)
+	local modes, best = MV.modes(), 0
+	for _, m in ipairs(modes) do best = math.max(best, c[m] or 0) end
+	local tied = {}
+	for _, m in ipairs(modes) do if (c[m] or 0) == best then table.insert(tied, m) end end
+	local how = best == 0 and "none" or (#tied == 1 and "most" or "tie")
+	local pool = tied
+	if #tied > 1 and MV.last then
+		pool = {}
+		for _, m in ipairs(tied) do if m ~= MV.last then table.insert(pool, m) end end
+		if #pool == 0 then pool = tied end
+	end
+	local w = pool[#pool == 1 and 1 or rng:NextInteger(1, #pool)]
+	local parts = {}
+	for _, m in ipairs(modes) do table.insert(parts, m .. "=" .. tostring(c[m] or 0)) end
+	script:SetAttribute("PgVoteLast", ("%s %s %s"):format(w, how, table.concat(parts, ",")))
+	return w
+end
+function MV.sync()
+	set("PgVoteModes", table.concat(MV.modes(), ","))
+	set("PgVotes", HttpService:JSONEncode(MV.counts()))
+	set("PgVoteWinner", MV.winner or "")
+	set("PgVoteHumans", #humans)
+	set("PgVoteSecs", tonumber(script:GetAttribute("PgVoteSecs")) or 15)
+end
+function MV.reset()
+	MV.by, MV.endsAt, MV.winner, MV.flashEnds, MV.done = {}, nil, nil, nil, false
+	for _, pl in ipairs(Players:GetPlayers()) do if pl:GetAttribute("PgVote") ~= nil then pl:SetAttribute("PgVote", nil) end end
+	MV.sync()
+end
 
 -- v1.3: the dino for a new bot (nil = rollBot picks any, as 1.2)
 local function botSpecies()
@@ -473,6 +551,11 @@ local function publish()
 		local lineup = phase == "lobby" and #humans > 0
 		set("PgPhase", lineup and (pgIntroEnds and "intro" or "lineup") or "")
 		set("PgEndsAt", lineup and (pgIntroEnds or state:GetAttribute("PrStartAt") or 0) or 0)
+		if lineup and MV.active() then -- v1.17: the vote screen comes first
+			set("PgPhase", "vote")
+			set("PgEndsAt", MV.winner and now() or MV.endsAt)
+			MV.sync()
+		end
 	else
 		set("PgPhase", "")
 	end
@@ -750,7 +833,8 @@ local function startMatch()
 	local lead = (get("PrPrematchEnabled") ~= false) and (tonumber(get("PrPrematchLead")) or 5) or nil -- v1.11
 	set("PrPrematch", lead ~= nil)
 	holdArmed = lead ~= nil
-	local ok, r = pcall(function() return hpFn:Invoke("start", lead) end)
+	set("PrMode", MV.mode) -- v1.17
+	local ok, r = pcall(function() return hpFn:Invoke("start", lead, MV.mode) end) -- v1.17: + the mode
 	if not ok or r ~= "ok" then
 		holdArmed = false -- v1.11
 		set("PrPrematch", false)
@@ -788,6 +872,8 @@ local function toLobby(result)
 	botRecs = {}
 	phase = "lobby"
 	set("PrResult", result or "")
+	MV.last = MV.mode -- v1.17: the next lobby votes again
+	MV.reset()
 	for _, h in ipairs(humans) do setHuman(h.player, true, false, nil) end
 	set("PrStartAt", #humans > 0 and (now() + autoStart()) or 0) -- v1.9: autoStart (was PrAutoStart)
 	rebuild()
@@ -1135,6 +1221,34 @@ Players.PlayerRemoving:Connect(function(pl)
 	script:SetAttribute("PrArenaLeft", (script:GetAttribute("PrArenaLeft") or 0) + 1)
 end)
 
+-- v1.17: the mode vote remote (see the header)
+MV.remote = ReplicatedStorage:FindFirstChild("ModeVote")
+if not MV.remote then
+	MV.remote = Instance.new("RemoteEvent")
+	MV.remote.Name = "ModeVote"
+	MV.remote.Parent = ReplicatedStorage
+end
+MV.remote.OnServerEvent:Connect(function(pl, mode)
+	local r
+	if os.clock() - (MV.lastReq[pl] or 0) < 0.15 then
+		r = "busy"
+	elseif not MV.active() or MV.winner then
+		r = "closed"
+	elseif not humanIndex(pl) then
+		r = "notInLobby"
+	elseif type(mode) ~= "string" or not table.find(MV.modes(), mode) then
+		r = "badArg"
+	else
+		MV.by[pl.UserId] = mode
+		pl:SetAttribute("PgVote", mode)
+		MV.sync()
+		r = "ok"
+	end
+	MV.lastReq[pl] = os.clock()
+	pl:SetAttribute("PgVoteResult", r)
+end)
+Players.PlayerRemoving:Connect(function(pl) MV.lastReq[pl] = nil end)
+
 -- ---------- the loop ----------
 local acc, lastIndex = 0, nil
 rebuild() -- v1.1
@@ -1151,6 +1265,33 @@ RunService.Heartbeat:Connect(function(dt)
 			if at - now() < hold then
 				at = now() + hold
 				set("PrStartAt", at)
+			end
+		end
+		if pgOn() and MV.on() and not MV.done and not pgIntroEnds then -- v1.17: the mode vote comes first
+			if #humans == 0 then
+				if MV.endsAt then MV.reset() publish() end
+				return
+			end
+			if not MV.endsAt then
+				MV.endsAt = now() + (tonumber(script:GetAttribute("PgVoteSecs")) or 15)
+				publish()
+			end
+			if not MV.winner and (now() >= MV.endsAt or MV.allIn()) then
+				MV.winner = MV.pick(MV.counts())
+				MV.flashEnds = now() + (tonumber(script:GetAttribute("PgVoteFlash")) or 1)
+				MV.mode = MV.winner
+				set("PrMode", MV.mode)
+				publish()
+			end
+			if MV.winner and now() >= MV.flashEnds then
+				MV.done = true
+				at = now() + autoStart()
+				set("PrStartAt", at)
+				publish()
+			else
+				local hold = (MV.flashEnds or (MV.endsAt + 1)) + autoStart()
+				if state:GetAttribute("PrStartAt") ~= hold then set("PrStartAt", hold) end
+				return
 			end
 		end
 		if pgOn() then -- v1.9: lineup -> intro -> match
@@ -1242,6 +1383,9 @@ RunService.Heartbeat:Connect(function(dt)
 				end
 				local res = R.dealJobs(list, {held = occ == side, humansOnPoint = humansOn, into = warm and 0 or ctx.into,
 					pointTime = H.POINT_TIME, now = os.clock()})
+				if MV.mode == "tdm" and get("PrTdmBotsHuntEnabled") ~= false then -- v1.17: TDM bots hunt
+					for _, e in pairs(res) do e.job, e.why = "duel", "tdm" end
+				end
 				local n = {hold = 0, duel = 0, guard = 0, run = 0}
 				for rec, e in pairs(res) do
 					rec.job, rec.jobWhy, rec.filledAt = e.job, e.why, e.filledAt

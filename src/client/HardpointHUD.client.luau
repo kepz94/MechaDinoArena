@@ -178,6 +178,14 @@ VERSION = "1.13" -- v1.13 phone HUD v2 score strip
 --   All three show only with the compass. Off / PC: as 1.12.
 VERSION = "1.14" -- v1.14 victory titles beat
 VERSION = "1.15" -- v1.15 filler bot personas drawn as players
+VERSION = "1.16" -- v1.16 Team Deathmatch HUD
+-- v1.16 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Hardpoint HpMode == "tdm" (HardpointServer 1.12) and script
+--   attribute HardpointHUDTdmEnabled ~= false (read per frame):
+--   * the score card's bars fill toward HpTdmLimit (30) kills; the line under the clock reads "/ 30" next to the other team's
+--     kills (mockup "14 / 30"; "GO IN m:ss" in the warm-up); the status pill "TEAM DEATHMATCH · +1 PER KILL" ("GET READY" in the warm-up). The NEXT pill, the point marker
+--     (and its v3 look), the compass and the phone v2 strip are hidden (the phone shows the card).
+--   * the boards: the sub line gets " · TEAM DEATHMATCH" (e.g. "ARENA · TEAM DEATHMATCH"), the on-point column is empty (header
+--     and cells), the MVP / SVP cards read "<k> K   <d> D".
 -- v1.14 (victory titles, MDA-557, plan docs/plans/VICTORY_TITLES_v1.0.md Task 6; Kepu 2026-11-16 19:00 "Let's implement them"):
 --   the results length is ReplicatedStorage.Hardpoint HpResultsLen (HardpointServer 1.9; missing / 0 -> HardpointRules.RESULTS),
 --   and while HpTitles is set and HpTitlesLen > 0 the beat after the banner is "titles" for HpTitlesLen s: this HUD draws
@@ -441,6 +449,9 @@ menuB.Activated:Connect(function()
 	if mr then mr:FireServer("menu") end
 end)
 local function mss(s) s = math.max(0, math.floor((tonumber(s) or 0) + 0.5)) return ("%d:%02d"):format(s // 60, s % 60) end
+local TD = {} -- v1.16: Team Deathmatch (see the header)
+function TD.on() return state:GetAttribute("HpMode") == "tdm" and script:GetAttribute("HardpointHUDTdmEnabled") ~= false end
+function TD.limit() return tonumber(state:GetAttribute("HpTdmLimit")) or 30 end
 -- v1.12: an Arena 4v4 reads ARENA (see the header)
 local function arenaLabel(pr)
 	return pr ~= nil and pr:GetAttribute("PrArena") == true and script:GetAttribute("HardpointHUDArenaLabelEnabled") ~= false
@@ -454,6 +465,7 @@ local function drawBoard(mine, you, foe, title)
 	local pr = ReplicatedStorage:FindFirstChild("Practice")
 	bSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
 	if arenaLabel(pr) then bSub.Text = "ARENA" end -- v1.12
+	if TD.on() then bSub.Text = bSub.Text .. " · TEAM DEATHMATCH" end -- v1.16
 	bNext.Text = (pr and "TEAM SCREEN IN " or "NEXT MATCH IN ") .. fmt((state:GetAttribute("HpResultsEndAt") or now()) - now())
 	local ok, list = pcall(function() return HttpService:JSONDecode(state:GetAttribute("HpBoard") or "[]") end)
 	if not ok or type(list) ~= "table" then list = {} end
@@ -468,6 +480,7 @@ local function drawBoard(mine, you, foe, title)
 		local hdCol = t == 1 and "#5aa0ff" or "#e0284a"
 		T[0][1].Text = ('<font color="%s">%s · %d</font>'):format(hdCol, t == 1 and "BLUE" or "RED", scores[side])
 		T[0][2].Text, T[0][3].Text, T[0][4].Text, T[0][5].Text = "Dino", "K", "D", "On point"
+		if TD.on() then T[0][5].Text = "" end -- v1.16
 		for i = 1, BOARD_ROWS do
 			local r = rows[i]
 			local cells = T[i]
@@ -478,6 +491,7 @@ local function drawBoard(mine, you, foe, title)
 				if r.bot and not persona then nm = nm .. ' <font size="10" color="#8f99aa">BOT</font>' end
 				cells[1].Text, cells[2].Text = nm, SHORT[r.species] or tostring(r.species or "")
 				cells[3].Text, cells[4].Text, cells[5].Text = tostring(r.k or 0), tostring(r.d or 0), mss(r.pt)
+				if TD.on() then cells[5].Text = "" end -- v1.16
 				for _, c in ipairs(cells) do c.TextColor3 = me and YELLOW or Color3.new(1, 1, 1) end
 			else
 				for _, c in ipairs(cells) do c.Text = "" end
@@ -770,6 +784,10 @@ local function fillSpot(aw, mine)
 			c.sub.Text = ("%s · %s"):format(sp, r.team == mine and "BLUE" or "RED")
 			c.stats.Text = ('<font color="#%s">%d</font> K   <font color="#%s">%s</font> ON PT'):format(pk.col:ToHex(), r.k or 0,
 				pk.col:ToHex(), mss(r.pt))
+			if TD.on() then -- v1.16
+				c.stats.Text = ('<font color="#%s">%d</font> K   <font color="#%s">%d</font> D'):format(pk.col:ToHex(), r.k or 0,
+					pk.col:ToHex(), r.d or 0)
+			end
 			c.fb.Text = string.upper(sp)
 			table.insert(how, modelInto(c, tonumber(string.match(pk.id, "^u(%d+)$") or "")))
 		end
@@ -846,6 +864,7 @@ local function drawEndBoard(mine, aw)
 	local right = left == "A" and "B" or "A"
 	for t, side in ipairs({left, right}) do
 		bTables[t][0][5].Text = "ON PT"
+		if TD.on() then bTables[t][0][5].Text = "" end -- v1.16
 		local rows = {}
 		for _, r in ipairs(list) do if r.team == side then table.insert(rows, r) end end
 		table.sort(rows, function(x, y) if x.k ~= y.k then return x.k > y.k end return tostring(x.name) < tostring(y.name) end)
@@ -1031,6 +1050,7 @@ local function endFrame(mine, you, foe, title)
 		local pr = ReplicatedStorage:FindFirstChild("Practice")
 		ebSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
 		if arenaLabel(pr) then ebSub.Text = "ARENA" end -- v1.12
+		if TD.on() then ebSub.Text = ebSub.Text .. " · TEAM DEATHMATCH" end -- v1.16
 		recordLine() -- v1.11
 	elseif beat == "titles" then -- v1.14: VictoryTitles draws the show
 		autoIsland(endsAt)
@@ -1533,6 +1553,7 @@ RunService.RenderStepped:Connect(function()
 	local you, foe = sa, sb
 	if mine == "B" then you, foe = sb, sa end
 	local limit = H and H.LIMIT or 250
+	if TD.on() then limit = TD.limit() end -- v1.16
 	youNum.Text, foeNum.Text = tostring(you), tostring(foe)
 	youFill.Size = UDim2.fromScale(math.clamp(you / limit, 0, 1), 1)
 	foeFill.Size = UDim2.fromScale(math.clamp(foe / limit, 0, 1), 1)
@@ -1579,6 +1600,17 @@ RunService.RenderStepped:Connect(function()
 	results.Visible = false
 	status.Visible = true
 	local warm = phase == "warmup"
+	if TD.on() then -- v1.16: no point in Team Deathmatch
+		pointL.Text = warm and ("GO IN " .. fmt(remaining)) or ("/ %d"):format(TD.limit())
+		status.Text, status.TextColor3 = warm and "GET READY" or "TEAM DEATHMATCH · +1 PER KILL", Color3.new(1, 1, 1)
+		nextL.Visible = false
+		marker.Visible = false
+		mv3Off()
+		cmp.Visible, cmpUnder.Visible = false, false
+		if v2hid then card.Visible = true v2hid = false end
+		script:SetAttribute("HardpointHUDState", "tdm")
+		return
+	end
 	pointL.Text = warm and ("P1 IN " .. fmt(remaining)) or ("P%d · %s"):format(idx, fmt(remaining))
 	if warm then
 		status.Text, status.TextColor3 = "GET READY", Color3.new(1, 1, 1)

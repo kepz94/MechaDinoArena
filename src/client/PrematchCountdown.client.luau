@@ -24,6 +24,10 @@ local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 chip follows the camera fly-over
+VERSION = "1.2" -- v1.2 Team Deathmatch texts
+-- v1.2 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Hardpoint HpMode == "tdm" and script attribute
+--   PrematchTdmEnabled ~= false (read per frame): TEAM DEATHMATCH / TAKE DOWN THE OTHER TEAM / FIRST TEAM TO <HpTdmLimit> KILLS ·
+--   <HpClock / 60> MIN; the FIRST POINT pill is hidden. Hardpoint: the 1.1 texts.
 -- v1.1 (camera fly-over, MDA-531, plan docs/plans/PREMATCH_LOCK_PAN_v1.0.md rule 6, mockup docs/mockups/prematch_pan_lock_v0.1.html;
 --   Kepu 2026-11-13 18:23 "the camera should pan to the point then pan back to the dinos", pick "A · Fly over"): while the
 --   character attribute PrematchPanning is true (PrematchCam 1.0 has the camera) the bottom chip reads "HELD UNTIL GO";
@@ -208,6 +212,16 @@ RunService.RenderStepped:Connect(function()
 	if num.Text ~= text then num.Text = text end
 	num.TextColor3 = (showGo or left <= 3) and YELLOW or Color3.new(1, 1, 1)
 	for _, l in ipairs({mode, obj, how, begins, pill, held}) do l.Visible = not showGo end
+	local tdm = hp:GetAttribute("HpMode") == "tdm" and script:GetAttribute("PrematchTdmEnabled") ~= false -- v1.2
+	local mt = tdm and "TEAM DEATHMATCH" or "HARDPOINT"
+	if mode.Text ~= mt then
+		mode.Text = mt
+		obj.Text = tdm and "TAKE DOWN THE OTHER TEAM" or "CAPTURE AND HOLD THE HARDPOINT"
+		how.Text = tdm and ("FIRST TEAM TO %d KILLS · %d MIN"):format(tonumber(hp:GetAttribute("HpTdmLimit")) or 30,
+			math.floor((tonumber(hp:GetAttribute("HpClock")) or 600) / 60 + 0.5))
+			or ("+1 PER SECOND PER DINO ON THE POINT · FIRST TO %d"):format(LIMIT)
+	end
+	if tdm then pill.Visible = false end
 	dim.BackgroundTransparency = showGo and 0.85 or 0.62
 	local pt = "FIRST POINT · P1 " .. firstPointName()
 	if pillText.Text ~= pt then pillText.Text = pt end

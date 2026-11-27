@@ -116,6 +116,20 @@ VERSION = "1.8" -- v1.8 practice start lead (pre-match countdown)
 VERSION = "1.9" -- v1.9 victory titles
 VERSION = "1.10" -- v1.10 every winner gets a title
 VERSION = "1.11" -- v1.11 persona bots on the board (p)
+VERSION = "1.12" -- v1.12 Team Deathmatch
+-- v1.12 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones):
+--   * HardpointPractice("start", lead, mode): mode "tdm" (and script attribute HpTdmEnabled ~= false, read per start) makes the
+--     new match Team Deathmatch; anything else = Hardpoint as 1.11. match.mode; ReplicatedStorage.Hardpoint HpMode ("hardpoint" /
+--     "tdm") and HpTdmLimit (script attribute HpTdmLimit, 30) are set at every new match. A TDM match starts its clock at
+--     HpTdmClock (600) s.
+--   * TDM live tick: no point scoring and no point seconds (HpOcc "N", HpClockPaused false); the clock always runs down by TICK.
+--     The practice hook's "stat" field "k" with team "A" / "B" (warm-up or live; not in the results) adds 1 to that team's score
+--     (HpScoreA /
+--     HpScoreB = team kills; no kill counts once a team is at HpTdmLimit). Winner: a team at HpTdmLimit kills, or the clock at
+--     0: more kills wins, equal = "draw". Then the
+--     same results as Hardpoint (titles, awards, HpWinner, HpResultsEndAt). Warm-up, rotations (the hidden point still drives the
+--     spawns), the board and the practice end are unchanged.
+--   Diagnostics: script attributes HpModeLast (the last match's mode), HpTdmLast ("<winner> <a>-<b> clock <s>").
 -- v1.10 (victory titles, MDA-554; Studio bots-match test 2026-11-16): a board row only exists after a stat (kill, death, point
 --   second, heal, ability), so a winner with none (e.g. stood off the point all match) got no title. At results every counted
 --   member of the winning team without a row is added to the title pick with zeros (k, d, pt, heal, ab = 0; name / species from
@@ -143,6 +157,9 @@ VERSION = "1.11" -- v1.11 persona bots on the board (p)
 --   Switch: script attribute HpStartLeadEnabled (default true, read per start).
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
+for k, v in pairs({HpTdmEnabled = true, HpTdmLimit = 30, HpTdmClock = 600}) do -- v1.12
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 if script:GetAttribute("HpMinPlayers") == nil then script:SetAttribute("HpMinPlayers", 1) end
 if script:GetAttribute("HardpointPracticeEnabled") == nil then script:SetAttribute("HardpointPracticeEnabled", true) end -- v1.1
 script:SetAttribute("HpTicks", 0)
@@ -675,8 +692,14 @@ local function titlesAtResults(m)
 end
 
 -- ---------- the match ----------
+local nextMode = nil -- v1.12: the mode the next match plays ("tdm" / "hardpoint"; nil = hardpoint)
 local function newMatch()
 	match = {startAt = now(), state = H.newState(), phase = "warmup", winner = nil, resultsEndAt = nil, acc = 0}
+	match.mode = nextMode == "tdm" and "tdm" or "hardpoint" -- v1.12
+	if match.mode == "tdm" then match.state.clock = tonumber(script:GetAttribute("HpTdmClock")) or 600 end
+	set("HpMode", match.mode)
+	set("HpTdmLimit", tonumber(script:GetAttribute("HpTdmLimit")) or 30)
+	script:SetAttribute("HpModeLast", match.mode)
 	board = {} -- v1.1
 	publishBoard(true)
 	rebalance()
@@ -824,6 +847,28 @@ local function tick()
 		return
 	end
 	match.phase = "live"
+	if match.mode == "tdm" then -- v1.12: Team Deathmatch (see the header)
+		match.state.clock = math.max(0, match.state.clock - H.TICK)
+		set("HpOcc", "N")
+		set("HpClockPaused", false)
+		local s, lim = match.state, tonumber(script:GetAttribute("HpTdmLimit")) or 30
+		if s.scoreA >= lim or s.scoreB >= lim or s.clock <= 0 then
+			local w = (s.scoreA > s.scoreB) and "A" or ((s.scoreB > s.scoreA) and "B" or "draw")
+			match.phase = "results"
+			match.winner = w
+			local extra = titlesAtResults(match)
+			match.resultsEndAt = now() + H.RESULTS + extra
+			set("HpWinner", w)
+			set("HpResultsEndAt", match.resultsEndAt)
+			if match.titleList then set("HpTitles", HttpService:JSONEncode({key = match.resultsEndAt, list = match.titleList})) end
+			award(match)
+			script:SetAttribute("HpTdmLast", ("%s %d-%d clock %d"):format(w, s.scoreA, s.scoreB, math.ceil(s.clock - 1e-6)))
+		end
+		ticks += 1
+		if ticks % 20 == 0 then script:SetAttribute("HpTicks", ticks) end
+		publish()
+		return
+	end
 	local centre = POINTS[ph.index].centre
 	local nA, nB = 0, 0
 	for _, d in ipairs(counted()) do
@@ -931,6 +976,7 @@ practiceFn.OnInvoke = function(action, a, b, c, d, e2, f, g)
 		return "ok"
 	elseif action == "start" then
 		if not PRACTICE then return "notPractice" end
+		nextMode = (b == "tdm" and script:GetAttribute("HpTdmEnabled") ~= false) and "tdm" or "hardpoint" -- v1.12
 		newMatch()
 		if type(a) == "number" and a > 0 and script:GetAttribute("HpStartLeadEnabled") ~= false then -- v1.8: lead
 			match.startAt = now() + math.min(a, tonumber(script:GetAttribute("HpLeadMax")) or 30)
@@ -950,6 +996,11 @@ practiceFn.OnInvoke = function(action, a, b, c, d, e2, f, g)
 		local amt = 1
 		if (f == "heal" or f == "ab") and type(g) == "number" and g == g and g > 0 then amt = g end -- v1.9
 		r[f] = (r[f] or 0) + amt
+		local lim = tonumber(script:GetAttribute("HpTdmLimit")) or 30
+		if f == "k" and match.mode == "tdm" and match.phase ~= "results" and (c == "A" or c == "B") -- v1.12: a kill scores
+			and match.state.scoreA < lim and match.state.scoreB < lim then -- (none past the limit; the tick ends the match)
+			if c == "A" then match.state.scoreA += 1 else match.state.scoreB += 1 end
+		end
 		return "ok"
 	end
 	return "badArg"

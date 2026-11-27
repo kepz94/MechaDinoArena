@@ -22,6 +22,10 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
 local VERSION = "1.0"
+VERSION = "1.1" -- v1.1 no point in Team Deathmatch
+-- v1.1 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): nothing is drawn while ReplicatedStorage.Hardpoint HpMode == "tdm"
+--   (HardpointServer 1.12; the hidden point only places spawns). Switch: script attribute HardpointPointFXTdmHideEnabled
+--   (default true, read per refresh).
 script:SetAttribute("HardpointPointFXVersion", VERSION)
 if script:GetAttribute("HardpointPointFXEnabled") == nil then script:SetAttribute("HardpointPointFXEnabled", true) end
 if script:GetAttribute("HardpointPointFX_detail") == nil then script:SetAttribute("HardpointPointFX_detail", 2) end
@@ -190,6 +194,7 @@ RunService.Heartbeat:Connect(function(dt)
 	acc = 0
 	local on = script:GetAttribute("HardpointPointFXEnabled") ~= false and state:GetAttribute("HpLive") == true
 		and player:GetAttribute("InMenu") ~= true
+	if on and state:GetAttribute("HpMode") == "tdm" and script:GetAttribute("HardpointPointFXTdmHideEnabled") ~= false then on = false end -- v1.1
 	local phase = state:GetAttribute("HpPhase")
 	if not on or (phase ~= "live" and phase ~= "warmup") or #points == 0 then
 		if cur or nxt then clearAll() end

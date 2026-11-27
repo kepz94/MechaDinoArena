@@ -57,6 +57,10 @@ VERSION = "1.6" -- v1.6 rank badge on the lineup plaques
 VERSION = "1.7" -- v1.7 filler bot personas drawn as players
 VERSION = "1.8" -- v1.8 coming soon + locked dinos
 VERSION = "1.9" -- v1.9 island pick back to the Lab
+VERSION = "1.10" -- v1.10 Team Deathmatch titles
+-- v1.10 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Practice PrMode == "tdm" (PracticeServer 1.17) and script
+--   attribute PregameModeLineEnabled ~= false (read per draw): the lineup / select sub line starts "TEAM DEATHMATCH" (mockup:
+--   "TEAM DEATHMATCH · BLUE TEAM") and the intro's VS line reads "TAKE DOWN THE OTHER TEAM". Hardpoint: as 1.9.
 -- v1.9 (Kepu 2026-11-26 15:39 "I think the main problem is the menu button. When I click Dino I don't have much options on what to do, the Skill button is also kind of redundant. I tried to edit my Dino skins and emotes and trails but the only way I can do that is go all the way to the main menu. Also the Dino options on the island only have mecha parts but not even descriptions, it's just not consistent"; standing pick: recommended option): island mode opened from the Lab's CHANGE DINO (player IslandPickToLab = true, Lab 2.4): SELECT on the dino step
 --   sends the swap as before (DinoSpeciesRequest), then closes the screen (IslandPickOpen = false) instead of going to the parts step,
 --   and reopens the island Lab (PlayerScripts.Lab.Open "compact") once your character is the picked dino (Species attribute, up to
@@ -517,6 +521,7 @@ local function modeColor()
 	return state:GetAttribute("PrPrivate") == true and C.bots or C.arena
 end
 local function modeLine()
+	if state:GetAttribute("PrMode") == "tdm" and script:GetAttribute("PregameModeLineEnabled") ~= false then return "TEAM DEATHMATCH" end -- v1.10
 	if state:GetAttribute("PrArena") == true then return "ARENA · HARDPOINT" end -- v1.1
 	return state:GetAttribute("PrPrivate") == true and "HARDPOINT VS BOTS" or "HARDPOINT PRACTICE"
 end
@@ -1296,6 +1301,8 @@ RunService.RenderStepped:Connect(function(dt)
 		if view ~= "select" then openSelect() sig = "" end
 	elseif pgPhase == "intro" then
 		if view ~= "intro" then setGhost(nil) setView("intro") sig = "" end
+		vsGo.Text = (state:GetAttribute("PrMode") == "tdm" and script:GetAttribute("PregameModeLineEnabled") ~= false) -- v1.10
+			and "TAKE DOWN THE OTHER TEAM" or "CAPTURE AND HOLD THE HARDPOINT"
 	elseif view == "hidden" or view == "intro" then
 		setView("lineup")
 		sig = ""
