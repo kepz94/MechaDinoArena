@@ -173,6 +173,11 @@ VERSION = "1.17" -- v1.17 the mode vote before the lineup + TDM bots
 --   * TDM bots: while PrMode is "tdm" (and PrTdmBotsHuntEnabled ~= false, read per team pass) every bot's job is "duel"
 --     (why "tdm"): they hunt enemies instead of holding, guarding or running to the point.
 --   Diagnostics: script attribute PgVoteLast ("<winner> <how: most / tie / none> <counts>").
+VERSION = "1.18" -- v1.18 Free for All
+-- v1.18 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): the vote also offers "ffa" (script attribute PgVoteFfaEnabled ~= false, read per
+--   use; appended after PgVoteModes). PrMode "ffa" -> HardpointPractice("start", lead, "ffa") (HardpointServer 1.13); the 8 seats
+--   stay the two groups of 4. FFA bots: every job "duel" (why "ffa"; PrFfaBotsHuntEnabled ~= false). Arena result of a FFA match
+--   (PrMode "ffa"): each human is team "W" when placed in the top HpFfaTopWin (3) of HpFfaPlaces, else "L", and the winner is "W".
 -- v1.15 (Kepu 2026-11-24 22:37 "once the game is done then it just goes into presentation mode and no more fighting in the
 --   background"): when Hardpoint HpPhase turns "results" in a match (phase "match"), everyone stops:
 --   * every living human's HumanoidRootPart is server-owned and anchored where it stands (velocity zeroed) and the character
@@ -369,6 +374,7 @@ function MV.modes()
 	for m in string.gmatch(tostring(script:GetAttribute("PgVoteModes") or ""), "[%a]+") do
 		if (m == "hardpoint" or m == "tdm") and not table.find(t, m) then table.insert(t, m) end
 	end
+	if script:GetAttribute("PgVoteFfaEnabled") ~= false and not table.find(t, "ffa") then table.insert(t, "ffa") end -- v1.18
 	if #t == 0 then t = {"hardpoint"} end
 	return t
 end
@@ -893,6 +899,17 @@ local function arenaResult(w)
 	local elig = arena.eligible
 	if elig == nil then elig = arena.tripEligible end
 	if script:GetAttribute("PrArenaTestEligible") == true then elig = true end
+	if MV.mode == "ffa" then -- v1.18: Free for All: the top 3 win
+		local okP, ids = pcall(function() return HttpService:JSONDecode(hpState:GetAttribute("HpFfaPlaces") or "[]") end)
+		local place = {}
+		if okP and type(ids) == "table" then for i, id in ipairs(ids) do place[id] = i end end
+		local top = tonumber(hs:GetAttribute("HpFfaTopWin")) or 3
+		for _, e in ipairs(list) do
+			local p = place["u" .. e.player.UserId]
+			e.team = (p and p <= top) and "W" or "L"
+		end
+		w = "W"
+	end
 	local r = arenaReport("result", arena.matchId, list, w, elig, {A = arena.leavers.A, B = arena.leavers.B})
 	script:SetAttribute("PrArenaResult", tostring(w) .. " " .. tostring(r))
 	script:SetAttribute("PrArenaState", "done")
@@ -1383,6 +1400,9 @@ RunService.Heartbeat:Connect(function(dt)
 				end
 				local res = R.dealJobs(list, {held = occ == side, humansOnPoint = humansOn, into = warm and 0 or ctx.into,
 					pointTime = H.POINT_TIME, now = os.clock()})
+				if MV.mode == "ffa" and get("PrFfaBotsHuntEnabled") ~= false then -- v1.18: FFA bots hunt anyone
+					for _, e in pairs(res) do e.job, e.why = "duel", "ffa" end
+				end
 				if MV.mode == "tdm" and get("PrTdmBotsHuntEnabled") ~= false then -- v1.17: TDM bots hunt
 					for _, e in pairs(res) do e.job, e.why = "duel", "tdm" end
 				end

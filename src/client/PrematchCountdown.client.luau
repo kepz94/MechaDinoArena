@@ -25,6 +25,9 @@ local HttpService = game:GetService("HttpService")
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 chip follows the camera fly-over
 VERSION = "1.2" -- v1.2 Team Deathmatch texts
+VERSION = "1.3" -- v1.3 Free for All texts
+-- v1.3 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): while HpMode == "ffa" and script attribute PrematchFfaEnabled ~= false (per frame):
+--   FREE FOR ALL / EVERY DINO FOR ITSELF / FIRST TO <HpFfaLimit> KILLS · <HpClock / 60> MIN; no FIRST POINT pill.
 -- v1.2 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Hardpoint HpMode == "tdm" and script attribute
 --   PrematchTdmEnabled ~= false (read per frame): TEAM DEATHMATCH / TAKE DOWN THE OTHER TEAM / FIRST TEAM TO <HpTdmLimit> KILLS ·
 --   <HpClock / 60> MIN; the FIRST POINT pill is hidden. Hardpoint: the 1.1 texts.
@@ -222,6 +225,13 @@ RunService.RenderStepped:Connect(function()
 			or ("+1 PER SECOND PER DINO ON THE POINT · FIRST TO %d"):format(LIMIT)
 	end
 	if tdm then pill.Visible = false end
+	if hp:GetAttribute("HpMode") == "ffa" and script:GetAttribute("PrematchFfaEnabled") ~= false then -- v1.3
+		mode.Text = "FREE FOR ALL"
+		obj.Text = "EVERY DINO FOR ITSELF"
+		how.Text = ("FIRST TO %d KILLS · %d MIN"):format(tonumber(hp:GetAttribute("HpFfaLimit")) or 20,
+			math.floor((tonumber(hp:GetAttribute("HpClock")) or 600) / 60 + 0.5))
+		pill.Visible = false
+	end
 	dim.BackgroundTransparency = showGo and 0.85 or 0.62
 	local pt = "FIRST POINT · P1 " .. firstPointName()
 	if pillText.Text ~= pt then pillText.Text = pt end

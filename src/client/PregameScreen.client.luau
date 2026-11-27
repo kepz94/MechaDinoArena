@@ -58,6 +58,16 @@ VERSION = "1.7" -- v1.7 filler bot personas drawn as players
 VERSION = "1.8" -- v1.8 coming soon + locked dinos
 VERSION = "1.9" -- v1.9 island pick back to the Lab
 VERSION = "1.10" -- v1.10 Team Deathmatch titles
+VERSION = "1.11" -- v1.11 Free for All lineup (B: two rows of 4) + intro
+-- v1.11 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): while ReplicatedStorage.Practice PrMode == "ffa" (PracticeServer 1.18) and script
+--   attribute PregameFfaEnabled ~= false (read per refresh / frame):
+--   * LINEUP: all 8 seats, you first, then your seat group, then the other: two rows of 4 (columns 225 wide, 3D 110 high at y 74
+--     and y 240; plaques at the column's foot, UIScale 0.62). Columns 5-8 are new (built like 1-4, hidden outside FFA). Each
+--     dino has its own colour (ring + plaque border; HSV hue (i - 1) / 8 + 0.75, sat 0.62); your plaque keeps the yellow
+--     border. Sub line "FREE FOR ALL · 8 DINOS · EVERY DINO FOR ITSELF" (the count follows the roster). Outside FFA: 1.10.
+--   * INTRO: the 8 dinos lit one after another, 4 at a time (dinos 1-4 then 5-8), each PG_INTRO / count s, callout
+--     "FREE FOR ALL · n OF 8" in its colour, the name, "<dino> · <record>". No VS screen.
+--   * SELECT: the team strip and the team-needs line are hidden (no team).
 -- v1.10 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Practice PrMode == "tdm" (PracticeServer 1.17) and script
 --   attribute PregameModeLineEnabled ~= false (read per draw): the lineup / select sub line starts "TEAM DEATHMATCH" (mockup:
 --   "TEAM DEATHMATCH · BLUE TEAM") and the intro's VS line reads "TAKE DOWN THE OTHER TEAM". Hardpoint: as 1.9.
@@ -522,6 +532,7 @@ local function modeColor()
 end
 local function modeLine()
 	if state:GetAttribute("PrMode") == "tdm" and script:GetAttribute("PregameModeLineEnabled") ~= false then return "TEAM DEATHMATCH" end -- v1.10
+	if state:GetAttribute("PrMode") == "ffa" and script:GetAttribute("PregameModeLineEnabled") ~= false then return "FREE FOR ALL" end -- v1.11
 	if state:GetAttribute("PrArena") == true then return "ARENA · HARDPOINT" end -- v1.1
 	return state:GetAttribute("PrPrivate") == true and "HARDPOINT VS BOTS" or "HARDPOINT PRACTICE"
 end
@@ -619,6 +630,81 @@ local function setColumn(col, e, ringColor, me)
 	col.tap.Visible = me
 	col.tap.Text = player:GetAttribute("PgReady") == true and "TAP TO CHANGE" or "TAP TO SELECT"
 	col.plaque.Active = me
+end
+
+-- ---------- v1.11: Free for All lineup (see the header) ----------
+local FF = {}
+function FF.on() return state ~= nil and state:GetAttribute("PrMode") == "ffa" and script:GetAttribute("PregameFfaEnabled") ~= false end
+function FF.color(i) return Color3.fromHSV(((i - 1) / 8 + 0.75) % 1, 0.62, 1) end
+for i = 5, 8 do -- columns 5-8, built like 1-4 (hidden outside Free for All)
+	local col = {}
+	local x, top, viewH, py = colRect(i - 4)
+	col.frame = new("Frame", {Name = "Col" .. i, BackgroundTransparency = 1, Position = UDim2.fromOffset(x, top), Size = UDim2.fromOffset(225, viewH), Visible = false}, L)
+	col.click = new("TextButton", {Name = "Hit", BackgroundTransparency = 1, Text = "", Size = UDim2.fromScale(1, 1), ZIndex = 4}, col.frame)
+	col.plaque = new("TextButton", {Name = "Plaque" .. i, AutoButtonColor = false, Text = "", BackgroundColor3 = Color3.fromRGB(17, 24, 33),
+		BackgroundTransparency = 0.08, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(x + 112, py), Size = UDim2.fromOffset(190, 118), ZIndex = 5, Visible = false}, L)
+	corner(col.plaque, 6)
+	col.stroke = stroke(col.plaque, C.line, 1.5)
+	local function row(name, y, size, color, font)
+		return text(col.plaque, {name = name, size = size, color = color, font = font, pos = UDim2.fromOffset(6, y), sz = UDim2.new(1, -12, 0, size + 3), z = 6})
+	end
+	col.pn = row("Name", 5, 10, C.text)
+	col.wl = row("Record", 18, 16.5, C.text)
+	col.pct = row("Pct", 37, 6.5, C.muted)
+	col.dn = row("Dino", 49, 8, Color3.fromRGB(201, 212, 226))
+	col.role = row("Role", 60, 6.5, C.bots)
+	col.st = row("Ready", 72, 7.5, C.muted)
+	col.pips = new("Frame", {Name = "Pips", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 90),
+		Size = UDim2.fromOffset(56, 12), ZIndex = 6}, col.plaque)
+	new("UIListLayout", {FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 3), HorizontalAlignment = Enum.HorizontalAlignment.Center}, col.pips)
+	col.pip = {}
+	for k = 1, 4 do
+		col.pip[k] = new("Frame", {BackgroundColor3 = Color3.fromRGB(43, 55, 71), BorderSizePixel = 0, Size = UDim2.fromOffset(11, 11), ZIndex = 6}, col.pips)
+		corner(col.pip[k], 3)
+	end
+	if phone then
+		col.pct.Visible, col.dn.Visible, col.role.Visible = false, false, false
+		col.wl.Position, col.st.Position = UDim2.fromOffset(6, 22), UDim2.fromOffset(6, 50)
+		col.pips.Position = UDim2.new(0.5, 0, 0, 72)
+		col.plaque.Size = UDim2.fromOffset(190, 92)
+	end
+	col.tap = text(L, {name = "Tap" .. i, text = "TAP TO SELECT", size = 8, color = C.dark, anchor = Vector2.new(0.5, 1),
+		pos = UDim2.fromOffset(x + 112, top + 14), sz = UDim2.fromOffset(110, 16), z = 6})
+	col.tap.BackgroundTransparency, col.tap.BackgroundColor3 = 0, C.yellow
+	corner(col.tap, 4)
+	col.tap.Visible = false
+	col.view = nil
+	col.flat = nil
+	cols[i] = col
+end
+for _, col in ipairs(cols) do col.ffaScale = new("UIScale", {Name = "FfaScale", Scale = 1}, col.plaque) end
+function FF.layout(on)
+	for i, col in ipairs(cols) do
+		local x, y, h, py, tapY, sc
+		if on then
+			local k = (i - 1) % 4
+			x, y, h = 50 + k * 225, (i <= 4) and 74 or 240, 110
+			py, tapY, sc = y + 104, y + 14, 0.62
+		else
+			local j = (i - 1) % 4 + 1
+			local top, viewH
+			x, top, viewH, py = colRect(j)
+			y, h, tapY, sc = top, viewH, top + 14, 1
+		end
+		col.frame.Position, col.frame.Size = UDim2.fromOffset(x, y), UDim2.fromOffset(225, h)
+		col.plaque.Position = UDim2.fromOffset(x + 112, py)
+		col.tap.Position = UDim2.fromOffset(x + 112, tapY)
+		col.ffaScale.Scale = sc
+	end
+end
+function FF.all()
+	local all = {}
+	for _, side in ipairs({mySide(), otherSide()}) do
+		for _, e in ipairs(roster[side] or {}) do
+			if isMe(e) then table.insert(all, 1, e) else table.insert(all, e) end
+		end
+	end
+	return all
 end
 
 -- ---------- SELECT ----------
@@ -1273,6 +1359,59 @@ local function refresh()
 	cta.Text = player:GetAttribute("PgReady") == true and "CHANGE DINO" or "SELECT DINO"
 	if view == "select" then drawSelect() end
 	return pgPhase
+end
+do -- v1.11: Free for All lineup / intro / select (see the header)
+	local rawRefresh = refresh
+	refresh = function()
+		local ph = rawRefresh()
+		local on = FF.on()
+		FF.layout(on)
+		if on then
+			local all = FF.all()
+			for i, col in ipairs(cols) do
+				local e = all[i]
+				setColumn(col, e, FF.color(i), isMe(e))
+				if e and not isMe(e) then col.stroke.Color = FF.color(i) end
+			end
+			tops.Lineup.sub.Text = ("FREE FOR ALL · %d DINOS · EVERY DINO FOR ITSELF"):format(#all)
+			local allReady = #all > 0
+			for _, e in ipairs(all) do if e.kind == "human" and e.ready ~= true then allReady = false end end
+			allReadyLbl.Visible = allReady
+			task.delay(0.1, function() -- the record line's size again, after FontSwap's first fit (it raced on the new columns)
+				for i, col in ipairs(cols) do
+					local e2 = all[i]
+					if e2 and col.wl.Text ~= "" then col.wl.TextSize = ((e2.kind == "bot" and not isPersona(e2)) and 11 or 16.5) * TF end
+				end
+			end)
+		end
+		return ph
+	end
+	local rawIntro = drawIntro
+	drawIntro = function(t)
+		if not FF.on() then return rawIntro(t) end
+		local all = FF.all()
+		local n = math.max(1, #all)
+		local per = (PR.PG_INTRO or 8) / n
+		local i = math.clamp(math.floor(t / per) + 1, 1, n)
+		local g = (i <= 4) and 0 or 4
+		local group = {}
+		for k = 1, 4 do group[k] = all[g + k] end
+		vs.Visible = false
+		introColumns(group, FF.color(i), i - g)
+		local e = all[i]
+		if e then
+			coT.Text, coT.TextColor3 = ("FREE FOR ALL · %d OF %d"):format(i, #all), FF.color(i)
+			coN.Text = isMe(e) and "YOU" or tostring(e.name)
+			local rec, sub = recordOf(e)
+			coR.Text = nameOf(slotDino(e)) .. " · " .. rec .. (sub ~= "" and (" · " .. sub) or "")
+		end
+		counter.Text = "PLAYER INTROS"
+	end
+	local rawSelect = drawSelect
+	drawSelect = function()
+		rawSelect()
+		if FF.on() then strip.Visible = false needsLbl.Visible = false end
+	end
 end
 state:GetAttributeChangedSignal("PrRoster"):Connect(function() sig = "" end)
 player:GetAttributeChangedSignal("DinoSpecies"):Connect(function() sig = "" end)

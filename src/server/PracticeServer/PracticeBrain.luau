@@ -89,8 +89,22 @@ local function aliveModel(m)
 end
 
 -- every enemy of team (bots and players)
-function M.enemiesOf(team, bots)
+-- v1.2 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): enemiesOf(team, bots, self): with self given and
+--   ReplicatedStorage HardpointFFA == true, every living bot but self and every living player out of the menu on a seat ("A" / "B")
+--   is an enemy. self nil (PracticeBrain 1.x callers) or not FFA = 1.1.
+function M.enemiesOf(team, bots, self) -- v1.2: + self
 	local list = {}
+	if self ~= nil and game:GetService("ReplicatedStorage"):GetAttribute("HardpointFFA") == true then -- v1.2: Free for All
+		for _, b in ipairs(bots) do
+			if b.model and b.model ~= self and aliveModel(b.model) then table.insert(list, b.model) end
+		end
+		for _, pl in ipairs(Players:GetPlayers()) do
+			local t = pl:GetAttribute("HardpointTeam")
+			local c = pl.Character
+			if (t == "A" or t == "B") and c and pl:GetAttribute("InMenu") ~= true and aliveModel(c) then table.insert(list, c) end
+		end
+		return list
+	end
 	for _, b in ipairs(bots) do
 		if b.team ~= team and b.model and aliveModel(b.model) then table.insert(list, b.model) end
 	end

@@ -179,6 +179,16 @@ VERSION = "1.13" -- v1.13 phone HUD v2 score strip
 VERSION = "1.14" -- v1.14 victory titles beat
 VERSION = "1.15" -- v1.15 filler bot personas drawn as players
 VERSION = "1.16" -- v1.16 Team Deathmatch HUD
+VERSION = "1.17" -- v1.17 Free for All HUD
+-- v1.17 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): while ReplicatedStorage.Hardpoint HpMode == "ffa" (HardpointServer 1.13) and script
+--   attribute HardpointHUDFfaEnabled ~= false (read per frame). Order = HpFfaPlaces (ids), anyone not in it after them by kills,
+--   then deaths, then name.
+--   * the score card (70 high) shows the standings over the bars: "FIRST TO 20" (yellow; "GO IN m:ss" in the warm-up) and the
+--     clock, then the top 3, or the top 2 and you when you are lower ("<place>  <NAME>", kills right; you yellow, "YOU"). Status
+--     pill only in the warm-up (GET READY); NEXT, marker, compass, phone strip hidden (the phone shows the card).
+--   * results: the title is your place ("1ST PLACE", "2ND PLACE", ...); board sub / banner "FREE FOR ALL · VOLT WINS WITH 20"
+--     ("YOU WIN WITH 20"); the two tables are PLACES 1-4 and PLACES 5-8 ("<place>  <name>", Dino, K, D, XP; no on-point column);
+--     MVP / SVP tags and XP follow that order; the spot cards read "<k> K   <d> D" and the dino only. Name tags over players: red.
 -- v1.16 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Hardpoint HpMode == "tdm" (HardpointServer 1.12) and script
 --   attribute HardpointHUDTdmEnabled ~= false (read per frame):
 --   * the score card's bars fill toward HpTdmLimit (30) kills; the line under the clock reads "/ 30" next to the other team's
@@ -788,6 +798,11 @@ local function fillSpot(aw, mine)
 				c.stats.Text = ('<font color="#%s">%d</font> K   <font color="#%s">%d</font> D'):format(pk.col:ToHex(), r.k or 0,
 					pk.col:ToHex(), r.d or 0)
 			end
+			if TD.ffa and TD.ffa() then -- v1.17
+				c.stats.Text = ('<font color="#%s">%d</font> K   <font color="#%s">%d</font> D'):format(pk.col:ToHex(), r.k or 0,
+					pk.col:ToHex(), r.d or 0)
+				c.sub.Text = sp
+			end
 			c.fb.Text = string.upper(sp)
 			table.insert(how, modelInto(c, tonumber(string.match(pk.id, "^u(%d+)$") or "")))
 		end
@@ -1051,6 +1066,12 @@ local function endFrame(mine, you, foe, title)
 		ebSub.Text = pr and ("PRACTICE · " .. string.upper(tostring(pr:GetAttribute("PrDifficulty") or "")) .. " BOTS") or "HARDPOINT"
 		if arenaLabel(pr) then ebSub.Text = "ARENA" end -- v1.12
 		if TD.on() then ebSub.Text = ebSub.Text .. " · TEAM DEATHMATCH" end -- v1.16
+		if TD.ffa and TD.ffa() then -- v1.17
+			ebSub.Text = ebSub.Text .. " · FREE FOR ALL"
+			ebScore.Text = TD.winLine()
+			local p = TD.place(TD.order())
+			ebTitle.TextColor3 = (p and p <= 3) and YELLOW or PINK
+		end
 		recordLine() -- v1.11
 	elseif beat == "titles" then -- v1.14: VictoryTitles draws the show
 		autoIsland(endsAt)
@@ -1417,6 +1438,7 @@ local function updateTags(mine, live)
 			local ok, size = pcall(function() return c:GetExtentsSize() end)
 			g.StudsOffsetWorldSpace = Vector3.new(0, (ok and size.Y or 8) * 0.6 + 3, 0)
 			g.Label.TextColor3 = (t == mine) and BLUE or RED
+			if TD.ffa and TD.ffa() then g.Label.TextColor3 = RED end -- v1.17
 		else
 			dropTag(pl)
 		end
@@ -1528,6 +1550,138 @@ local function markerV3(cam, vp, p, warm)
 	if script:GetAttribute("HardpointHUDMarker") ~= state then script:SetAttribute("HardpointHUDMarker", state) end
 end
 
+-- ---------- v1.17: Free for All (see the header) ----------
+function TD.ffa() return state:GetAttribute("HpMode") == "ffa" and script:GetAttribute("HardpointHUDFfaEnabled") ~= false end
+function TD.limitF() return tonumber(state:GetAttribute("HpFfaLimit")) or 20 end
+function TD.order()
+	local list = readBoardList()
+	local byId, out, seen = {}, {}, {}
+	for _, r in ipairs(list) do byId[r.id] = r end
+	local ok, ids = pcall(function() return HttpService:JSONDecode(state:GetAttribute("HpFfaPlaces") or "[]") end)
+	if ok and type(ids) == "table" then
+		for _, id in ipairs(ids) do
+			if byId[id] and not seen[id] then table.insert(out, byId[id]) seen[id] = true end
+		end
+	end
+	local rest = {}
+	for _, r in ipairs(list) do if not seen[r.id] then table.insert(rest, r) end end
+	table.sort(rest, function(x, y)
+		if (x.k or 0) ~= (y.k or 0) then return (x.k or 0) > (y.k or 0) end
+		if (x.d or 0) ~= (y.d or 0) then return (x.d or 0) < (y.d or 0) end
+		return tostring(x.name) < tostring(y.name)
+	end)
+	for _, r in ipairs(rest) do table.insert(out, r) end
+	return out
+end
+function TD.place(o) for i, r in ipairs(o) do if r.id == "u" .. player.UserId then return i end end return nil end
+function TD.pname(i) return ({"1ST", "2ND", "3RD"})[i] or (i .. "TH") end
+function TD.title() local p = TD.place(TD.order()) return p and (TD.pname(p) .. " PLACE") or "RESULTS" end
+function TD.winLine()
+	local r = TD.order()[1]
+	if not r then return "FREE FOR ALL" end
+	local me = r.id == "u" .. player.UserId
+	return ("%s %s WITH %d"):format(me and "YOU" or string.upper(tostring(r.name)), me and "WIN" or "WINS", r.k or 0)
+end
+function TD.fillNames(o)
+	for t = 1, 2 do
+		local T = bTables[t]
+		T[0][1].Text = ('<font color="#ffc832">%s</font>'):format(t == 1 and "PLACES 1-4" or "PLACES 5-8")
+		T[0][5].Text = ""
+		for i = 1, BOARD_ROWS do
+			local idx = (t - 1) * 4 + i
+			local r = i <= 4 and o[idx] or nil
+			local cells = T[i]
+			if r then
+				local me = r.id == "u" .. player.UserId
+				local nm = idx .. "  " .. (me and "★ " or "") .. tostring(r.name)
+				local persona = r.p == true and script:GetAttribute("FillerPersonaUI") ~= false
+				if r.bot and not persona then nm = nm .. ' <font size="10" color="#8f99aa">BOT</font>' end
+				cells[1].Text, cells[2].Text = nm, SHORT[r.species] or tostring(r.species or "")
+				cells[3].Text, cells[4].Text, cells[5].Text = tostring(r.k or 0), tostring(r.d or 0), ""
+				for _, c in ipairs(cells) do c.TextColor3 = me and YELLOW or Color3.new(1, 1, 1) end
+			else
+				for _, c in ipairs(cells) do c.Text = "" end
+			end
+		end
+	end
+end
+do
+	local rawBoard = drawBoard
+	drawBoard = function(mine, you, foe, title)
+		rawBoard(mine, you, foe, title)
+		if not TD.ffa() then return end
+		TD.fillNames(TD.order())
+		bSub.Text = "FREE FOR ALL · " .. TD.winLine()
+	end
+	local rawEnd = drawEndBoard
+	drawEndBoard = function(mine, aw)
+		rawEnd(mine, aw)
+		if not TD.ffa() then return end
+		local o = TD.order()
+		TD.fillNames(o)
+		for t = 1, 2 do
+			for i = 1, BOARD_ROWS do
+				local idx = (t - 1) * 4 + i
+				local r = i <= 4 and o[idx] or nil
+				local cell = xpCells[t] and xpCells[t][i]
+				if cell and r then
+					local a = aw and aw.rows and aw.rows[r.id]
+					local persona = r.p == true and script:GetAttribute("FillerPersonaUI") ~= false
+					cell.Text = (a and (not r.bot or persona)) and ("+" .. tostring(a.total or 0)) or "—"
+					local tag = aw and ((r.id == aw.mvp and '<font size="11" color="#ffd25a">MVP</font> ')
+						or (r.id == aw.svp and '<font size="11" color="#c9d3e0">SVP</font> ')) or nil
+					if tag then bTables[t][i][1].Text = tag .. bTables[t][i][1].Text end
+					cell.TextColor3 = r.id == "u" .. player.UserId and YELLOW or GREEN
+				elseif cell then
+					cell.Text = ""
+				end
+			end
+		end
+	end
+end
+-- the standings card over the score card
+TD.box = Instance.new("Frame")
+TD.box.Name = "FfaStandings"
+TD.box.Size = UDim2.fromScale(1, 1)
+TD.box.BackgroundColor3 = PANEL
+TD.box.BackgroundTransparency = 0
+TD.box.ZIndex = 3
+TD.box.Visible = false
+corner(TD.box, 10)
+TD.box.Parent = card
+TD.rows = {}
+for i = 1, 4 do
+	local y = 4 + (i - 1) * 15.5
+	TD.rows[i] = {
+		l = label(TD.box, {Position = UDim2.fromOffset(12, y), Size = UDim2.new(1, -70, 0, 15), TextSize = 13, ZIndex = 4,
+			TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Text = ""}),
+		r = label(TD.box, {Position = UDim2.new(1, -58, 0, y), Size = UDim2.fromOffset(46, 15), TextSize = 13, ZIndex = 4,
+			TextXAlignment = Enum.TextXAlignment.Right, Text = ""}),
+	}
+end
+function TD.card(warm, remaining)
+	local o = TD.order()
+	local p = TD.place(o)
+	local show = (p and p > 3) and {1, 2, p} or {1, 2, 3}
+	TD.rows[1].l.Text = warm and ("GO IN " .. fmt(remaining)) or ("FIRST TO %d"):format(TD.limitF())
+	TD.rows[1].l.TextColor3 = YELLOW
+	TD.rows[1].r.Text = clockL.Text
+	for k = 1, 3 do
+		local i = show[k]
+		local r = o[i]
+		local L, R = TD.rows[k + 1].l, TD.rows[k + 1].r
+		if r then
+			local me = r.id == "u" .. player.UserId
+			L.Text = i .. "  " .. (me and "YOU" or string.upper(tostring(r.name)))
+			R.Text = tostring(r.k or 0)
+			L.TextColor3 = me and YELLOW or Color3.new(1, 1, 1)
+			R.TextColor3 = L.TextColor3
+		else
+			L.Text, R.Text = "", ""
+		end
+	end
+end
+
 RunService.RenderStepped:Connect(function()
 	local phase = state:GetAttribute("HpPhase")
 	local show = script:GetAttribute("HardpointHUDEnabled") ~= false and state:GetAttribute("HpLive") == true
@@ -1547,6 +1701,9 @@ RunService.RenderStepped:Connect(function()
 	status.Position = UDim2.new(0, 16, 0, 58 + 58 + 6)
 	nextL.Position = UDim2.new(0, 16, 0, 58 + 58 + 6 + 30)
 	slimUpdate() -- v1.6
+	TD.box.Visible = TD.ffa() -- v1.17
+	if TD.box.Visible then card.Size = UDim2.fromOffset(card.Size.X.Offset, 70) end
+	if TD.box.Visible and phase == "results" then TD.card(false, 0) end -- the final standings
 
 	local mine = player:GetAttribute("HardpointTeam")
 	local sa, sb = state:GetAttribute("HpScoreA") or 0, state:GetAttribute("HpScoreB") or 0
@@ -1571,6 +1728,7 @@ RunService.RenderStepped:Connect(function()
 		pointL.Text = ""
 		local w = state:GetAttribute("HpWinner")
 		local title = (w == "draw") and "DRAW" or (w == mine and "VICTORY" or "DEFEAT")
+		if TD.ffa() then title = TD.title() end -- v1.17: your place
 		bp.Visible = not boardDismissed
 		if not boardDismissed then drawBoard(mine, you, foe, title) end
 		if meOn then endFrame(mine, you, foe, title) end -- v1.8
@@ -1600,6 +1758,18 @@ RunService.RenderStepped:Connect(function()
 	results.Visible = false
 	status.Visible = true
 	local warm = phase == "warmup"
+	if TD.ffa() then -- v1.17: Free for All: the standings card, no point
+		TD.card(warm, remaining)
+		status.Visible = warm
+		status.Text, status.TextColor3 = "GET READY", Color3.new(1, 1, 1)
+		nextL.Visible = false
+		marker.Visible = false
+		mv3Off()
+		cmp.Visible, cmpUnder.Visible = false, false
+		if v2hid then card.Visible = true v2hid = false end
+		script:SetAttribute("HardpointHUDState", "ffa")
+		return
+	end
 	if TD.on() then -- v1.16: no point in Team Deathmatch
 		pointL.Text = warm and ("GO IN " .. fmt(remaining)) or ("/ %d"):format(TD.limit())
 		status.Text, status.TextColor3 = warm and "GET READY" or "TEAM DEATHMATCH · +1 PER KILL", Color3.new(1, 1, 1)

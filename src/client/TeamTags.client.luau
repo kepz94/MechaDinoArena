@@ -45,6 +45,9 @@ local UserInputService = game:GetService("UserInputService")
 
 local VERSION = "1.1"
 VERSION = "1.2" -- v1.2 rank badge
+VERSION = "1.3" -- v1.3 Free for All: no friends
+-- v1.3 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): while ReplicatedStorage.Hardpoint HpMode == "ffa" and script attribute
+--   TeamTagsFfaEnabled ~= false (read per SLOW tick) every other dino counts as the other team (no blue friend markers).
 for k, v in pairs({TeamTagsBadgeEnabled = true, TeamTagsBadgeSize = 10, TeamTagsBadgeSizePC = 12}) do -- v1.2
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -258,6 +261,9 @@ local function slowTick()
 	local cfg = {friendMax = get("TeamTagsFriendMax"), chevronMax = get("TeamTagsChevronMax"), engageNear = get("TeamTagsEngageNear"),
 		hurtWindow = get("TeamTagsHurtWindow"), hurtMax = get("TeamTagsHurtMax")}
 	local dinos, botsFolder = collect()
+	if hp:GetAttribute("HpMode") == "ffa" and get("TeamTagsFfaEnabled") ~= false then -- v1.3: nobody is a friend
+		for _, info in pairs(dinos) do info.team = "FFA" end
+	end
 	-- gone / no longer marked
 	for m in pairs(recs) do
 		if not dinos[m] then dropRec(m) end

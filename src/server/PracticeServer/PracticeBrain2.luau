@@ -94,6 +94,8 @@
 --   PracticeKit 1.3); and while the bot is stunned (StunnedUntil after now) or pinned (PinHeld), the kit's breakFree() runs
 --   (Stun Breaker) before the tick is skipped as before. Both do nothing without that part in the slots. No switch of its own:
 --   PracticeKit's PrKitLast4Enabled turns them off.
+-- v2.7 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): both enemiesOf calls pass the bot's own model
+--   (PracticeBrain 1.2): in a Free for All match every other dino is an enemy.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local PathfindingService = game:GetService("PathfindingService")
@@ -268,7 +270,7 @@ local function sideOf(b, goal)
 end
 
 local function enemySees(b, ctx)
-	for _, e in ipairs(V1.enemiesOf(b.team, ctx.bots)) do
+	for _, e in ipairs(V1.enemiesOf(b.team, ctx.bots, b.model)) do -- v2.7: + self (Free for All)
 		local r1 = rootOf(e)
 		if r1 and (r1.Position - b.hrp.Position).Magnitude < 140 then
 			local from = r1.Position + Vector3.new(0, 3, 0)
@@ -609,7 +611,7 @@ function M.step(b, ctx)
 	local p = b.hrp.Position
 	local job = ctx.jobs and (b.job or (R.jobOf and R.jobOf(b.species))) or nil
 	-- sense
-	local enemies = V1.enemiesOf(b.team, ctx.bots)
+	local enemies = V1.enemiesOf(b.team, ctx.bots, b.model) -- v2.7: + self (Free for All)
 	local best, bestScore
 	local foes, foesNear, mates, matesNear, mateLow = 0, 0, 0, 0, false
 	for _, e in ipairs(enemies) do

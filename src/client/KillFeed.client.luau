@@ -36,6 +36,9 @@ VERSION = "1.2" -- v1.2 phone HUD v2: lines top-right
 VERSION = "1.3" -- v1.3 rank badge
 VERSION = "1.4" -- v1.4 filler bot personas: no BOT tag
 VERSION = "1.5" -- v1.5 hidden while the phone menu drawer is open
+VERSION = "1.6" -- v1.6 Free for All: no team colours
+-- v1.6 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): while ReplicatedStorage.Hardpoint HpMode == "ffa" and script attribute KillFeedFfaEnabled
+--   ~= false (read per line) every name is white (no blue / red teams).
 -- v1.5 (Kepu 2026-11-26 03:27 "When I press the menu button top right, I can't see anything because it's hidden behind kill feed"):
 --   on phone HUD v2 the lines sit right under the ☰ (v1.2), the same spot as the drawer's MENU / SKILLS / camera / SQUAD buttons
 --   (PhoneMenu 1.0 PhoneMenuY_*), all in DisplayOrder 6 guis. While the player attribute PhoneMenuOpen is true the kill feed
@@ -165,6 +168,8 @@ local bannerUntil = 0
 
 local function teamColor(team)
 	local mine = player:GetAttribute("HardpointTeam")
+	local hpS = ReplicatedStorage:FindFirstChild("Hardpoint") -- v1.6
+	if hpS and hpS:GetAttribute("HpMode") == "ffa" and script:GetAttribute("KillFeedFfaEnabled") ~= false then return WHITE end
 	if team ~= "A" and team ~= "B" then return WHITE end
 	if mine == "A" or mine == "B" then return team == mine and BLUE or RED end
 	return team == "A" and BLUE or RED

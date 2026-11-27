@@ -3743,3 +3743,8 @@ Model numbers are generator output (old version = the flag in the last column, b
   - VoteScreen 1.0 (script): `VoteScreenEnabled` (true, per frame). Diagnostics `VoteScreenVersion`, `VoteScreenState`, `VoteScreenLastPress`.
   - HardpointHUD 1.16: `HardpointHUDTdmEnabled` (true, per frame). PrematchCountdown 1.2: `PrematchTdmEnabled` (true). PregameScreen 1.10: `PregameModeLineEnabled` (true). HardpointPointFX 1.1: `HardpointPointFXTdmHideEnabled` (true). GameSounds 1.22: `GameSoundsTdmQuietEnabled` (true). PracticeLobby 1.9: `PracticeLobbyVoteHide` (true).
   - Studio test of the vote without an Arena trip: PracticeServer `PgVoteArenaOnly` = false, restore to nil.
+- Arena modes step 3 (Free for All, 2026-11-26):
+  - HardpointServer 1.13: `HpFfaEnabled` (true, per start), `HpFfaLimit` (20), `HpFfaClock` (600 s), `HpFfaTopWin` (3), `HpFfaTitlesEnabled` (true, per results). ReplicatedStorage.Hardpoint `HpFfaLimit`, `HpFfaPlaces` (JSON ids, place order), `HpWinner` "ffa". ReplicatedStorage `HardpointFFA` (bool). Diagnostic `HpFfaLast`.
+  - SquadRules 1.4: ReplicatedStorage `HardpointFfaRules` (switch, default on). PracticeBrain 1.2: enemiesOf(team, bots, self).
+  - PracticeServer 1.18: `PgVoteFfaEnabled` (true), `PrFfaBotsHuntEnabled` (true).
+  - HardpointHUD 1.17: `HardpointHUDFfaEnabled` (true). PrematchCountdown 1.3: `PrematchFfaEnabled` (true). PregameScreen 1.11: `PregameFfaEnabled` (true). HardpointPointFX 1.2: same `HardpointPointFXTdmHideEnabled`. GameSounds 1.23: `GameSoundsFfaResultEnabled` (true; quiet rules share `GameSoundsTdmQuietEnabled`). TeamTags 1.3: `TeamTagsFfaEnabled` (true). KillFeed 1.6: `KillFeedFfaEnabled` (true).

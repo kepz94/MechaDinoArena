@@ -187,6 +187,10 @@ VERSION = "1.19" -- v1.19 the Dilo's buttons on their beats (round 18 picks)
 VERSION = "1.20" -- v1.20 the Herrera's buttons on their beats (round 19 picks)
 VERSION = "1.21" -- v1.21 the Troodon's buttons on their beats (round 20 picks)
 VERSION = "1.22" -- v1.22 no point lines in Team Deathmatch
+VERSION = "1.23" -- v1.23 Free for All
+-- v1.23 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): the v1.22 quiet rules also hold while HpMode == "ffa" (switch GameSoundsTdmQuietEnabled);
+--   at the results with HpWinner "ffa": win when your id is in the top 3 of HpFfaPlaces, else lose (switch
+--   GameSoundsFfaResultEnabled, default true, read per results).
 -- v1.22 (Team Deathmatch, Kepu 2026-11-26 "How about other game modes like team death match for arena like how apex does it or free for all" -> "Let's do 1. 2 3 like you suggested"; 17:00 "Vote mode should be a quick screen before we even go into the Dino lineups like this. Like 15 seconds max to vote"; 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html; numbers: the recommended ones): while ReplicatedStorage.Hardpoint HpMode == "tdm" and script attribute
 --   GameSoundsTdmQuietEnabled ~= false (read per check), the intro line (vointro1 / vointro2 talk about the hardpoint) and the
 --   "moving" warning are not played. Every other sound as 1.21.
@@ -1514,6 +1518,12 @@ task.spawn(function()
 		if ph == "results" and prevPhase ~= "results" then
 			local team, w = player:GetAttribute("HardpointTeam"), hp:GetAttribute("HpWinner")
 			if (team == "A" or team == "B") and (w == "A" or w == "B") then play(w == team and "win" or "lose", true) end
+			if w == "ffa" and script:GetAttribute("GameSoundsFfaResultEnabled") ~= false then -- v1.23
+				local okP, ids = pcall(function() return game:GetService("HttpService"):JSONDecode(hp:GetAttribute("HpFfaPlaces") or "[]") end)
+				local place
+				if okP and type(ids) == "table" then for i, id in ipairs(ids) do if id == "u" .. player.UserId then place = i end end end
+				if place then play(place <= 3 and "win" or "lose", true) end
+			end
 		end
 		prevPhase = ph
 	end)
@@ -1526,6 +1536,7 @@ task.spawn(function()
 		local left = ends - workspace:GetServerTimeNow()
 		if ph == "warmup" and introFor ~= ends and script:GetAttribute("GameSoundsIntroEnabled") ~= false -- v1.17 the intro line
 			and not (hp:GetAttribute("HpMode") == "tdm" and script:GetAttribute("GameSoundsTdmQuietEnabled") ~= false) -- v1.22
+			and not (hp:GetAttribute("HpMode") == "ffa" and script:GetAttribute("GameSoundsTdmQuietEnabled") ~= false) -- v1.23
 			and left <= num("GameSoundsIntroAt", 9) then
 			introFor = ends
 			if left >= num("GameSoundsIntroAt", 9) - num("GameSoundsIntroLate", 0.5) then
@@ -1547,7 +1558,7 @@ task.spawn(function()
 		else
 			lastTick = nil
 		end
-		if ph == "live" and not (hp:GetAttribute("HpMode") == "tdm" and script:GetAttribute("GameSoundsTdmQuietEnabled") ~= false) then -- v1.22: + not TDM
+		if ph == "live" and not ((hp:GetAttribute("HpMode") == "tdm" or hp:GetAttribute("HpMode") == "ffa") and script:GetAttribute("GameSoundsTdmQuietEnabled") ~= false) then -- v1.22: + not TDM; v1.23: + not FFA
 			local idx = hp:GetAttribute("HpIndex")
 			if left > 0 and left <= num("GameSoundsMoveWarn", 5) and warnedIndex ~= idx then
 				warnedIndex = idx

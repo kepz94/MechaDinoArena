@@ -33,6 +33,10 @@
 --     false (false = 1.2).
 --   * leaderOf(id) -> the member Player with player attribute SquadLeader == true (SquadServer 1.1), else nil.
 --     isLeader(player) -> SquadLeader == true and a squad.
+-- v1.4 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): while teamLive() and ffaLive() — ReplicatedStorage
+--   HardpointFFA == true (HardpointServer 1.13, a Free for All match) and ReplicatedStorage HardpointFfaRules ~= false (the switch) —
+--   same / sameChar answer false (nobody is anyone's teammate: every damage path hits everyone, team heals reach nobody). The
+--   HubSafe row of sameChar still comes first. ffaLive() -> bool. ffaLive() false -> exactly 1.3.
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService") -- v1.3
@@ -70,6 +74,10 @@ function M.teamLive()
 	return ReplicatedStorage:GetAttribute("HardpointLive") == true and ReplicatedStorage:GetAttribute("HardpointTeamRules") ~= false
 end
 
+function M.ffaLive() -- v1.4
+	return ReplicatedStorage:GetAttribute("HardpointFFA") == true and ReplicatedStorage:GetAttribute("HardpointFfaRules") ~= false
+end
+
 function M.teamOfPlayer(player)
 	if typeof(player) ~= "Instance" or not player:IsA("Player") then return "" end
 	local t = player:GetAttribute("HardpointTeam")
@@ -87,6 +95,7 @@ end
 
 function M.same(plA, plB)
 	if typeof(plA) ~= "Instance" or typeof(plB) ~= "Instance" then return false end
+	if M.teamLive() and M.ffaLive() then return false end -- v1.4
 	if M.teamLive() then return M.sameIds(true, M.teamOfPlayer(plA), M.teamOfPlayer(plB), plA == plB) end -- v1.1
 	return M.sameIds(M.live(), M.idOfPlayer(plA), M.idOfPlayer(plB), plA == plB)
 end
@@ -98,6 +107,7 @@ function M.sameChar(a, b)
 		and (a:GetAttribute("HubSafe") == true or b:GetAttribute("HubSafe") == true) then
 		return true
 	end
+	if M.teamLive() and M.ffaLive() then return false end -- v1.4
 	if M.teamLive() then return M.sameIds(true, M.teamOf(a), M.teamOf(b), a == b) end -- v1.1
 	return M.sameIds(M.live(), M.idOf(a), M.idOf(b), a == b)
 end

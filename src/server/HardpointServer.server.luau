@@ -130,6 +130,21 @@ VERSION = "1.12" -- v1.12 Team Deathmatch
 --     same results as Hardpoint (titles, awards, HpWinner, HpResultsEndAt). Warm-up, rotations (the hidden point still drives the
 --     spawns), the board and the practice end are unchanged.
 --   Diagnostics: script attributes HpModeLast (the last match's mode), HpTdmLast ("<winner> <a>-<b> clock <s>").
+VERSION = "1.13" -- v1.13 Free for All
+-- v1.13 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)):
+--   * HardpointPractice("start", lead, "ffa") (script attribute HpFfaEnabled ~= false, read per start) makes the new match Free
+--     for All: match.mode / HpMode "ffa", clock HpFfaClock (600), HpFfaLimit (20) published at every new match, HpFfaPlaces ""
+--     until live. The two seat groups ("A" / "B") stay as they are (roster, spawn rows); ReplicatedStorage attribute HardpointFFA
+--     is true while a FFA match exists (set at newMatch and every publish), which SquadRules 1.4 reads: nobody is anyone's
+--     teammate. No team opening spawns (match.opening false); the spawn pick counts every other dino as an enemy.
+--   * FFA live tick: no point scoring (HpOcc "N", clock always runs). Every counted dino gets a board row (0 / 0) so all 8 are
+--     placed. Places: kills (more first), then deaths (fewer first), then name, then id; ReplicatedStorage.Hardpoint HpFfaPlaces =
+--     JSON list of ids in place order (every tick, set on change); HpScoreA / HpScoreB = the 1st / 2nd place kills. A kill past
+--     HpFfaLimit is not counted. End: the leader at HpFfaLimit kills, or the clock at 0. Results as Hardpoint, with HpWinner
+--     "ffa"; inside, match.winner = "A" and the top HpFfaTopWin (3) are seat "A" for the titles (VictoryTitles.assign) and the
+--     awards (MatchAwards.compute: kill / win XP, MVP among them, SVP among the rest), the rest seat "B" (both modules only know
+--     "A" / "B"); titles only while HpFfaTitlesEnabled ~= false (read per results).
+--   Diagnostic: script attribute HpFfaLast ("<1st id> <kills> clock <s> n <dinos>").
 -- v1.10 (victory titles, MDA-554; Studio bots-match test 2026-11-16): a board row only exists after a stat (kill, death, point
 --   second, heal, ability), so a winner with none (e.g. stood off the point all match) got no title. At results every counted
 --   member of the winning team without a row is added to the title pick with zeros (k, d, pt, heal, ab = 0; name / species from
@@ -157,6 +172,9 @@ VERSION = "1.12" -- v1.12 Team Deathmatch
 --   Switch: script attribute HpStartLeadEnabled (default true, read per start).
 script:SetAttribute("HardpointServerVersion", VERSION)
 if script:GetAttribute("HardpointEnabled") == nil then script:SetAttribute("HardpointEnabled", true) end
+for k, v in pairs({HpFfaEnabled = true, HpFfaLimit = 20, HpFfaClock = 600, HpFfaTopWin = 3}) do -- v1.13
+	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
+end
 for k, v in pairs({HpTdmEnabled = true, HpTdmLimit = 30, HpTdmClock = 600}) do -- v1.12
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
 end
@@ -461,6 +479,10 @@ pickFn.OnInvoke = function(player)
 			if d.team == team then table.insert(mates, d.pos) else table.insert(enemies, d.pos) end
 		end
 	end
+	if match and match.mode == "ffa" then -- v1.13: everyone is an enemy
+		for _, p in ipairs(mates) do table.insert(enemies, p) end
+		mates = {}
+	end
 	-- v1.2: spawns v2 (see the header)
 	local far = script:GetAttribute("HardpointFarSpawnsEnabled") ~= false and H.SIGHT_MAX2 ~= nil and #(BANDS2[idx] or {}) > 0 -- v1.3
 	local useBands = far and BANDS2 or BANDS
@@ -648,10 +670,14 @@ local function titlesAtResults(m)
 	clearTitles()
 	if script:GetAttribute("HardpointTitlesEnabled") == false then script:SetAttribute("HpTitlesLast", "off") return 0 end
 	if not VictoryTitles then script:SetAttribute("HpTitlesLast", "noModule") return 0 end
+	if m.mode == "ffa" and script:GetAttribute("HpFfaTitlesEnabled") == false then script:SetAttribute("HpTitlesLast", "ffaOff") return 0 end -- v1.13
 	if m.winner ~= "A" and m.winner ~= "B" then script:SetAttribute("HpTitlesLast", "draw") return 0 end
 	local rows = {}
 	for _, r in pairs(board) do
 		table.insert(rows, {id = r.id, team = r.team, bot = r.bot, k = r.k, d = r.d, pt = r.pt, heal = r.heal or 0, ab = r.ab or 0})
+	end
+	if m.mode == "ffa" then -- v1.13: the top 3 are seat "A" (the winner), the rest "B"
+		for _, x in ipairs(rows) do x.team = (m.topSet and m.topSet[x.id]) and "A" or "B" end
 	end
 	local zeroRows = {} -- v1.10: winners with no board row yet
 	if script:GetAttribute("HpTitlesAllWinnersEnabled") ~= false then
@@ -692,10 +718,44 @@ local function titlesAtResults(m)
 end
 
 -- ---------- the match ----------
+local FFA = {} -- v1.13: Free for All (see the header)
+function FFA.limit() return tonumber(script:GetAttribute("HpFfaLimit")) or 20 end
+function FFA.places()
+	for _, d in ipairs(counted()) do -- every dino in the match is placed (0 / 0 until it kills or dies)
+		local id, name, species, isBot = idOf(d)
+		if id and not board[id] then boardRow(id, name, d.team, species, isBot) end
+	end
+	local list = {}
+	for _, r in pairs(board) do table.insert(list, r) end
+	table.sort(list, function(x, y)
+		if x.k ~= y.k then return x.k > y.k end
+		if x.d ~= y.d then return x.d < y.d end
+		if tostring(x.name) ~= tostring(y.name) then return tostring(x.name) < tostring(y.name) end
+		return tostring(x.id) < tostring(y.id)
+	end)
+	return list
+end
+function FFA.publish(list)
+	local ids = {}
+	for i, r in ipairs(list) do ids[i] = r.id end
+	set("HpFfaPlaces", HttpService:JSONEncode(ids))
+end
+function FFA.flag()
+	local on = match ~= nil and match.mode == "ffa"
+	if ReplicatedStorage:GetAttribute("HardpointFFA") ~= on then ReplicatedStorage:SetAttribute("HardpointFFA", on) end
+end
 local nextMode = nil -- v1.12: the mode the next match plays ("tdm" / "hardpoint"; nil = hardpoint)
 local function newMatch()
 	match = {startAt = now(), state = H.newState(), phase = "warmup", winner = nil, resultsEndAt = nil, acc = 0}
 	match.mode = nextMode == "tdm" and "tdm" or "hardpoint" -- v1.12
+	if nextMode == "ffa" then -- v1.13
+		match.mode = "ffa"
+		match.state.clock = tonumber(script:GetAttribute("HpFfaClock")) or 600
+		match.opening = false -- no team opening spots: everyone spawns away from everyone
+	end
+	set("HpFfaLimit", FFA.limit())
+	set("HpFfaPlaces", "")
+	FFA.flag()
 	if match.mode == "tdm" then match.state.clock = tonumber(script:GetAttribute("HpTdmClock")) or 600 end
 	set("HpMode", match.mode)
 	set("HpTdmLimit", tonumber(script:GetAttribute("HpTdmLimit")) or 30)
@@ -740,6 +800,9 @@ local function award(m)
 	for _, r in pairs(board) do
 		table.insert(rows, {id = r.id, team = r.team, bot = r.bot, k = r.k, d = r.d, pt = r.pt, pk = r.pk or 0, p = r.p}) -- v1.11: + p
 	end
+	if m.mode == "ffa" then -- v1.13: the top 3 get the win XP (seat "A" = the winner), the rest "B"
+		for _, x in ipairs(rows) do x.team = (m.topSet and m.topSet[x.id]) and "A" or "B" end
+	end
 	local res = MatchAwards.compute(rows, m.winner, PRACTICE, awardsCfg())
 	task.spawn(function()
 		local grantFn = game:GetService("ServerScriptService"):FindFirstChild("SkillServer")
@@ -783,6 +846,7 @@ local function playingCount()
 end
 
 local function publish()
+	FFA.flag() -- v1.13
 	local a, b = teamCounts()
 	set("HpCountA", a)
 	set("HpCountB", b)
@@ -847,6 +911,34 @@ local function tick()
 		return
 	end
 	match.phase = "live"
+	if match.mode == "ffa" then -- v1.13: Free for All (see the header)
+		match.state.clock = math.max(0, match.state.clock - H.TICK)
+		set("HpOcc", "N")
+		set("HpClockPaused", false)
+		local list = FFA.places()
+		FFA.publish(list)
+		match.state.scoreA = list[1] and list[1].k or 0
+		match.state.scoreB = list[2] and list[2].k or 0
+		if (list[1] and list[1].k >= FFA.limit()) or match.state.clock <= 0 then
+			local topN = tonumber(script:GetAttribute("HpFfaTopWin")) or 3
+			match.topSet = {}
+			for i, r in ipairs(list) do if i <= topN then match.topSet[r.id] = true end end
+			match.phase = "results"
+			match.winner = "A" -- the top 3 (seat "A" for titles / awards)
+			local extra = titlesAtResults(match)
+			match.resultsEndAt = now() + H.RESULTS + extra
+			set("HpWinner", "ffa")
+			set("HpResultsEndAt", match.resultsEndAt)
+			if match.titleList then set("HpTitles", HttpService:JSONEncode({key = match.resultsEndAt, list = match.titleList})) end
+			award(match)
+			script:SetAttribute("HpFfaLast", ("%s %d clock %d n %d"):format(list[1] and tostring(list[1].id) or "-",
+				list[1] and list[1].k or 0, math.ceil(match.state.clock - 1e-6), #list))
+		end
+		ticks += 1
+		if ticks % 20 == 0 then script:SetAttribute("HpTicks", ticks) end
+		publish()
+		return
+	end
 	if match.mode == "tdm" then -- v1.12: Team Deathmatch (see the header)
 		match.state.clock = math.max(0, match.state.clock - H.TICK)
 		set("HpOcc", "N")
@@ -977,6 +1069,7 @@ practiceFn.OnInvoke = function(action, a, b, c, d, e2, f, g)
 	elseif action == "start" then
 		if not PRACTICE then return "notPractice" end
 		nextMode = (b == "tdm" and script:GetAttribute("HpTdmEnabled") ~= false) and "tdm" or "hardpoint" -- v1.12
+		if b == "ffa" and script:GetAttribute("HpFfaEnabled") ~= false then nextMode = "ffa" end -- v1.13
 		newMatch()
 		if type(a) == "number" and a > 0 and script:GetAttribute("HpStartLeadEnabled") ~= false then -- v1.8: lead
 			match.startAt = now() + math.min(a, tonumber(script:GetAttribute("HpLeadMax")) or 30)
@@ -993,6 +1086,7 @@ practiceFn.OnInvoke = function(action, a, b, c, d, e2, f, g)
 		-- ("stat", id, name, team, species, isBot, field)
 		if type(a) ~= "string" or (f ~= "k" and f ~= "d" and f ~= "pk" and f ~= "heal" and f ~= "ab") or not match then return "badArg" end -- v1.5: + "pk"; v1.9: + "heal", "ab"
 		local r = boardRow(a, b, c, d, e2)
+		if f == "k" and match.mode == "ffa" and (r.k or 0) >= FFA.limit() then return "ok" end -- v1.13: none past the limit
 		local amt = 1
 		if (f == "heal" or f == "ab") and type(g) == "number" and g == g and g > 0 then amt = g end -- v1.9
 		r[f] = (r[f] or 0) + amt
