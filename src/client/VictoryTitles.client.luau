@@ -76,6 +76,10 @@ VERSION = "1.1" -- v1.1 HUD hold, test hook, step errors, soft flash
 VERSION = "1.2" -- v1.2 CARRIED bag fit
 VERSION = "1.3" -- v1.3 music and sound effects (VictoryTitlesAudio)
 VERSION = "1.4" -- v1.4 hold on the stage until the results end
+VERSION = "1.5" -- v1.5 the results crowd for Free for All too
+-- v1.5 (bug hunt 2026-11-27 item 4; Kepu 16:49 "Okay let's do those"): while script attribute VictoryCrowdFfaEnabled ~= false (default
+--   true, read per results) the results crowd also plays when HpWinner is "ffa" (HardpointServer's Free for All result; 1.4: only
+--   "A" / "B"). false = 1.4.
 script:SetAttribute("VictoryTitlesVersion", VERSION)
 for k, v in pairs({VictoryTitlesEnabled = true, VictoryBannerSec = 2, VictoryStageY = 3000, VictoryTapGuard = 1}) do
 	if script:GetAttribute(k) == nil then script:SetAttribute(k, v) end
@@ -662,7 +666,9 @@ if state then
 		if ph == "results" and prevPhase ~= "results" and Audio and script:GetAttribute("VictoryTitlesEnabled") ~= false
 			and player:GetAttribute("InMenu") ~= true then
 			local w = state:GetAttribute("HpWinner")
-			if w == "A" or w == "B" then pcall(Audio.preload) pcall(Audio.crowd, "res") end
+			if w == "A" or w == "B" or (w == "ffa" and script:GetAttribute("VictoryCrowdFfaEnabled") ~= false) then -- v1.5: + ffa
+				pcall(Audio.preload) pcall(Audio.crowd, "res")
+			end
 		end
 		prevPhase = ph
 	end)

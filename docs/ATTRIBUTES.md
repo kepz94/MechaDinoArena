@@ -3761,3 +3761,4 @@ Model numbers are generator output (old version = the flag in the last column, b
 - TrooAttackServer 1.12: `TrooDamageMul112` (3), `TrooBalance112Enabled` (true; false = 1.11 x5). DiloAttackServer 1.15: `DiloDamageMul115` (1.15), `DiloBalance115Enabled` (true; false = 1.14 x1.5). DiloMovesServer 1.17: `DiloDamageMul115` (1.15), `DiloBalance117Enabled` (true; false = 1.16 x1.5). All read per hit; `TrooBuffHits` / `DiloBuffHits` still count.
 - TrooAttackServer 1.12.1: `TrooDamageMul112` default 2.5 (1.12: 3).
 - SkinStats 1.3: `SkinStatsStreakEverywhereEnabled` (true, per kill). QuestServer 1.3: `QuestKillsEverywhereEnabled` (true, per kill). Module switches: QuestRules 1.1 `M.ANYWHERE_TEXTS` / `M.STORM_NEED` (15), AchievementRules 1.1 `M.ANYWHERE_TEXTS`, UniversalSkins 1.9 `US.STREAK_ANYWHERE` / `US.STORM_NEED` (15).
+- Tutorial 1.9: `TutWelcomeArenaCopyEnabled` (true, per draw). VictoryTitles 1.5: `VictoryCrowdFfaEnabled` (true, per results).
