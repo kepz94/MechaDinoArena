@@ -115,7 +115,8 @@ VERSION = "1.10" -- v1.10 unlock-only copy + level-1 ability cards
 -- v1.10 (unlock-only progression, MDA-617, plan docs/plans/UNLOCK_ONLY_v1.0.md Task 5, ADR-016): while the player's SkillUnlockOnly is
 --   true and script attribute TutUnlockCopyEnabled ~= false (read per draw): the gear sheet reads "All unlocked. They're yours." and
 --   its part cards "UNLOCKED" (1.9: "All maxed." / "MAXED ★"); the showcase ability cards keep their type and line but drop the
---   stat chips (they were the step-4 numbers; parts are level 1 now). Passive cards unchanged.
+--   stat chips (they were the step-4 numbers; parts are level 1 now). Passive cards unchanged. The welcome screen's middle tile reads
+--   UNLOCK "Mecha parts with your points" (1.9: UPGRADE "Mecha parts and skill points").
 -- v1.9 (bug hunt 2026-11-27 item 3; Kepu 16:49 "Okay let's do those", copy "FIGHT · 4v4 Arena matches"): while script attribute
 --   TutWelcomeArenaCopyEnabled ~= false (default true, read per draw) the welcome screen's FIGHT tile reads "4v4 Arena matches"
 --   (1.8: "Squad battles on the island"; no island bots since v1086). Layout, the other two tiles unchanged. false = 1.8.
@@ -1470,6 +1471,7 @@ local function drawWelcome()
 	local TILES = {{"", "FIGHT", "Squad battles on the island"}, {"", "UPGRADE", "Mecha parts and skill points"},
 		{"", "COLLECT", "7 dinos, skins, emotes, trails"}} -- Studio check: no icons (see the tile text below)
 	if script:GetAttribute("TutWelcomeArenaCopyEnabled") ~= false then TILES[1][3] = "4v4 Arena matches" end -- v1.9
+	if player:GetAttribute("SkillUnlockOnly") == true and script:GetAttribute("TutUnlockCopyEnabled") ~= false then TILES[2][2], TILES[2][3] = "UNLOCK", "Mecha parts with your points" end -- v1.10
 	for i, t in ipairs(TILES) do
 		local holder = make("Frame", {Name = "Slot" .. i, BackgroundTransparency = 1, LayoutOrder = i, Size = UDim2.fromOffset(tw, th)}, row)
 		local card = make("Frame", {Name = "Tile", BackgroundColor3 = C.card, Size = UDim2.fromScale(1, 1), Position = UDim2.fromOffset(0, px(2, 14)),
