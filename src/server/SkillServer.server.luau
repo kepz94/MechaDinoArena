@@ -171,6 +171,25 @@ VERSION = "1.17" -- v1.17 dino unlock spend
 --   ("unlock -40"). Switch: script attribute SkillSpendUnlockEnabled (true, read per call). Diagnostic: SkillUnlockSpends.
 --   Launch reset (Kepu 2026-11-26 08:10 "everybody has clean sheets nothing on their accounts ready for launch"): SkillSaveStoreName default "MDA_Skills_v4" ("MDA_Skills_v3" kept).
 VERSION = "1.18" -- v1.18 every stat row maxed for everyone
+VERSION = "1.19" -- v1.19 unlock-only progression
+-- v1.19 (unlock-only progression, MDA-614, plan docs/plans/UNLOCK_ONLY_v1.0.md Task 2, ADR-016; Kepu 2026-11-27 19:31 "take out the
+--   upgrade and stat system entirely so that people are just unlocking Dino's and mecha parts. Not upgrading the mecha parts"; picks
+--   "Base numbers", "Level 1", "Flat 10 points each", "Dino + all its parts", "One shared wallet", "Stay unlocked, free"; 19:43
+--   "Build"). While script attribute SkillUnlockOnlyEnabled ~= false (default true, read at each use; a change republishes nobody
+--   by itself, the next publish shows it):
+--   * Effective steps (stepsFor) = SkillTree.unlockSteps(saved steps, dino, given): every live mecha part the dino owns (saved step
+--     >= 1, or given: the free dino, MaxedDinos, the test layer) at 1, every stat row at 0 (the dino's base numbers). The saved
+--     steps are never rewritten (load's mastery clamp and over-pool reset are skipped), so the switch off brings 1.18 back.
+--   * No stat rows are given (testStats returns none); player SkillAllStatsMax stays true so the Lab keeps the STATS tab hidden.
+--   * Wallet: one account pool. SkillLeft = earnedOf (level points + bonus - dino unlocks) - pspend (points spent on part unlocks,
+--     saved as value.pspend, a whole number >= 0); SkillSpent = SkillPartSpent = pspend.
+--   * SkillRequest("buy", id): "notPart" (not a live part of the active dino), "owned" (effective step 1), "noPoints" (SkillLeft
+--     < script attribute SkillPartPrice, default SkillTree.PART_PRICE 10), else the saved step becomes 1 (at least), pspend +=
+--     price, autoSlot as 1.1, SkillLastPoints "part -10", result "ok".
+--   * SkillRequest("respec") -> "disabled" (no refunds). SkillSpendUnlock (dino unlock): checked against SkillLeft; no build reset.
+--   * Player attributes: SkillUnlockOnly (true / false), SkillPartPrice, SkillPartSpent, SkillKitOwned / SkillKitTotal (live
+--     parts of the active dino owned / all).
+--   false = 1.18 exactly (pspend kept in the save, ignored).
 -- v1.18 (Kepu 2026-11-26 11:14 "lets remove stats entirely. everyone should be automatically maxed out."; standing pick "whatever the recommended option is ... just choose that" ->
 --   stats only, mecha parts still bought with points): script attribute SkillAllStatsMaxEnabled (true, read at each publish; a change
 --   republishes everyone). While on, the v1.11 stat layer is on for every player and every dino: every stat row the active dino sees
@@ -277,8 +296,13 @@ local function testCloak(d) -- v1.4; v1.6: true when the layer gives any part to
 	return #testParts(d) > 0
 end
 -- v1.11: every stat row the active dino sees (not soon, not a live mecha part) while max-all is on
+if script:GetAttribute("SkillUnlockOnlyEnabled") == nil then script:SetAttribute("SkillUnlockOnlyEnabled", true) end -- v1.19
+if script:GetAttribute("SkillPartPrice") == nil then script:SetAttribute("SkillPartPrice", ST.PART_PRICE or 10) end -- v1.19
+local function unlockOnly() return script:GetAttribute("SkillUnlockOnlyEnabled") ~= false and ST.unlockSteps ~= nil end -- v1.19
+local function partPrice() return math.max(0, math.floor(tonumber(script:GetAttribute("SkillPartPrice")) or ST.PART_PRICE or 10)) end
 local function testStats(d)
 	local out = {}
+	if unlockOnly() then return out end -- v1.19: no stat rows given
 	if not (maxAll() or script:GetAttribute("SkillAllStatsMaxEnabled") ~= false) or not d.active then return out end -- v1.18: or every stat maxed
 	for _, id in ipairs(ST.PATH_ORDER) do
 		local p = ST.PATHS[id]
@@ -294,6 +318,11 @@ local function noStats(steps, key) -- v1.18: a record's steps without its stat r
 	return s
 end
 local function stepsFor(d) -- v1.5: real steps, plus the test parts at star while the layer is on (v1.6: all live parts)
+	if unlockOnly() then -- v1.19: owned / given parts at 1, stat rows at 0
+		local given = {}
+		for _, id in ipairs(testParts(d)) do given[id] = true end
+		return ST.unlockSteps(d.steps, d.active, given)
+	end
 	local stats = testStats(d) -- v1.11
 	if #stats > 0 then
 		local s = table.clone(d.steps)
@@ -335,7 +364,9 @@ local function publish(player, d, levelUp)
 	local given = testParts(d) -- v1.6
 	player:SetAttribute("SkillTestParts", table.concat(given, ","))
 	player:SetAttribute("SkillTestStats", #testStats(d)) -- v1.11
-	player:SetAttribute("SkillAllStatsMax", script:GetAttribute("SkillAllStatsMaxEnabled") ~= false) -- v1.18
+	player:SetAttribute("SkillAllStatsMax", script:GetAttribute("SkillAllStatsMaxEnabled") ~= false or unlockOnly()) -- v1.18; v1.19: + unlock-only (STATS tab hidden)
+	player:SetAttribute("SkillUnlockOnly", unlockOnly()) -- v1.19
+	player:SetAttribute("SkillPartPrice", partPrice()) -- v1.19
 	local level, into, nxt = ST.levelOf(d.xp)
 	local earned = earnedOf(d) -- v1.15 (1.14: ST.pointsOf(level))
 	local spent = ST.spent((buyBase(d)), d.active) -- v1.3: + dino; v1.7: given test parts left out
@@ -349,9 +380,24 @@ local function publish(player, d, levelUp)
 	player:SetAttribute("SkillPoints", earned)
 	player:SetAttribute("SkillSpent", spent)
 	player:SetAttribute("SkillLeft", earned - spent)
+	if unlockOnly() then -- v1.19: the shared wallet
+		player:SetAttribute("SkillSpent", d.pspend or 0)
+		player:SetAttribute("SkillLeft", math.max(0, earned - (d.pspend or 0)))
+	end
+	player:SetAttribute("SkillPartSpent", d.pspend or 0) -- v1.19
 	player:SetAttribute("SkillBonusPoints", d.universal and SkillPool.cleanBonus(d.bonus, bonusMax()) or 0) -- v1.15
 	player:SetAttribute("SkillUniversal", d.universal and "on" or "off") -- v1.15
 	local eff = stepsFor(d) -- v1.5 (1.4: cloak 4 here only)
+	do -- v1.19: kit counts for the active dino
+		local own, total = 0, 0
+		if d.active and ST.isPart then
+			for _, id in ipairs(ST.PATH_ORDER) do
+				if ST.isPart(id, d.active) then total += 1 if (eff[id] or 0) >= 1 then own += 1 end end
+			end
+		end
+		player:SetAttribute("SkillKitOwned", own)
+		player:SetAttribute("SkillKitTotal", total)
+	end
 	for _, id in ipairs(ST.PATH_ORDER) do
 		player:SetAttribute("SkillPath_" .. id, eff[id] or 0)
 	end
@@ -422,10 +468,10 @@ end
 local function cleanRecord(raw, key, cap) -- v1.15: + cap (account points when universal) -- a saved record -> {xp, steps, loadout}, sanitized like 1.1; v1.3: for its dino
 	local xp = math.max(0, math.floor(tonumber(type(raw) == "table" and raw.xp) or 0))
 	local steps = ST.sanitize(type(raw) == "table" and raw.steps or {}, key)
-	if not ST.masteryOk(steps, key) then -- v1.3: over Mastery 3 -> every line back to step II
+	if not unlockOnly() and not ST.masteryOk(steps, key) then -- v1.3: over Mastery 3 -> every line back to step II (v1.19: not in unlock-only)
 		for id, n in pairs(steps) do if n > 2 then steps[id] = 2 end end
 	end
-	if ST.spent(noStats(steps, key), key) > (cap or ST.pointsOf((ST.levelOf(xp)))) then steps = ST.sanitize({}, key) end -- v1.18: noStats
+	if not unlockOnly() and ST.spent(noStats(steps, key), key) > (cap or ST.pointsOf((ST.levelOf(xp)))) then steps = ST.sanitize({}, key) end -- v1.18: noStats; v1.19: kept in unlock-only
 	return {xp = xp, steps = steps, loadout = ST.sanitizeLoadout(type(raw) == "table" and raw.loadout or nil, steps, key),
 		rawLoadout = type(raw) == "table" and type(raw.loadout) == "table" and table.clone(raw.loadout) or nil} -- v1.8
 end
@@ -447,6 +493,7 @@ local function save(player, d)
 	if d.universal then value.uxp, value.bonus = d.xp, d.bonus -- v1.15
 	else value.uxp, value.bonus = d.rawUxp, d.rawBonus end
 	value.unlock = d.unlock or 0 -- v1.17
+	value.pspend = d.pspend or 0 -- v1.19
 	if type(d.saved) == "table" then -- v1.12: each dino's saved loadout rides in its record
 		for key, sv in pairs(d.saved) do
 			if value.dinos[key] then value.dinos[key].saved = sv end
@@ -475,6 +522,7 @@ local function load(player)
 	d.universal = script:GetAttribute("SkillUniversalEnabled") ~= false -- v1.15
 	d.uxp, d.bonus = 0, 0
 	d.unlock = 0 -- v1.17
+	d.pspend = 0 -- v1.19
 	player:SetAttribute("SkillAccountFrom", "new")
 	data[player] = d
 	if script:GetAttribute("SkillSaveEnabled") == false or not store then
@@ -488,6 +536,7 @@ local function load(player)
 		elseif type(value) == "table" and value.v == 2 and type(value.dinos) == "table" then -- v1.2: per-dino records
 			d.rawUxp, d.rawBonus = value.uxp, value.bonus -- v1.15: written back as they are while universal is off
 			d.unlock = math.max(0, math.floor(tonumber(value.unlock) or 0)) -- v1.17
+			d.pspend = math.max(0, math.floor(tonumber(value.pspend) or 0)) -- v1.19
 			local cap -- v1.15: the account points every record is checked against
 			if d.universal then
 				d.uxp, d.bonus = SkillPool.accountXp(value), SkillPool.cleanBonus(value.bonus, bonusMax())
@@ -633,7 +682,28 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 		return
 	end
 	d.lastRequest = os.clock()
-	if action == "buy" and type(pathId) == "string" then
+	if action == "buy" and type(pathId) == "string" and unlockOnly() then -- v1.19: unlock a part
+		local why
+		local eff = stepsFor(d)
+		local price = partPrice()
+		if not ST.isPart(pathId, d.active) then
+			why = "notPart"
+		elseif (eff[pathId] or 0) >= 1 then
+			why = "owned"
+		elseif math.max(0, earnedOf(d) - (d.pspend or 0)) < price then
+			why = "noPoints"
+		else
+			d.steps = ST.sanitize(d.steps, d.active)
+			d.steps[pathId] = math.max(1, d.steps[pathId] or 0)
+			d.pspend = (d.pspend or 0) + price
+			if script:GetAttribute("SkillLoadoutEnabled") ~= false then d.loadout = ST.autoSlot(d.loadout, stepsFor(d), pathId, d.active) end
+			d.dirty = true
+			publish(player, d, false)
+			player:SetAttribute("SkillLastPoints", "part -" .. price)
+			why = "ok"
+		end
+		player:SetAttribute("SkillLastResult", why)
+	elseif action == "buy" and type(pathId) == "string" then
 		local earned = earnedOf(d) -- v1.15 (1.14: ST.pointsOf((ST.levelOf(d.xp))))
 		local base, given = buyBase(d) -- v1.7
 		local new, why
@@ -679,6 +749,8 @@ remote.OnServerEvent:Connect(function(player, action, pathId, slotPath) -- v1.1:
 			publish(player, d, false)
 			player:SetAttribute("SkillLastResult", "saved")
 		end
+	elseif action == "respec" and unlockOnly() then -- v1.19: no refunds
+		player:SetAttribute("SkillLastResult", "disabled")
 	elseif action == "respec" then
 		d.steps = ST.sanitize({}, d.active)
 		d.loadout = emptyLoadout() -- v1.1; v1.3: SLOTS empties
@@ -801,16 +873,17 @@ spendFn.OnInvoke = function(player, amount, reason)
 	if not d or not d.loaded then return "notLoaded" end
 	if not d.universal then return "disabled" end
 	local before = earnedOf(d)
+	if unlockOnly() then before = math.max(0, before - (d.pspend or 0)) end -- v1.19: the shared wallet
 	if before < amount then return "notEnough", before end
 	d.unlock = (d.unlock or 0) + amount
 	local cap = earnedOf(d)
-	if d.active and ST.spent((buyBase(d)), d.active) > cap then -- the active build, as a respec (v1.18: given rows left out)
+	if not unlockOnly() and d.active and ST.spent((buyBase(d)), d.active) > cap then -- the active build, as a respec (v1.18: given rows left out; v1.19: not in unlock-only)
 		d.steps = ST.sanitize({}, d.active)
 		d.loadout = emptyLoadout()
 		if d.testPlaced then d.testPlaced[d.active] = nil end
 	end
 	for key, r in pairs(d.dinos) do
-		if key ~= d.active and type(r) == "table" and ST.spent(noStats(r.steps or {}, key), key) > cap then -- v1.18: noStats
+		if not unlockOnly() and key ~= d.active and type(r) == "table" and ST.spent(noStats(r.steps or {}, key), key) > cap then -- v1.18: noStats; v1.19: not in unlock-only
 			r.steps = ST.sanitize({}, key)
 			r.loadout = emptyLoadout()
 		end
