@@ -3646,4 +3646,28 @@ do
 	end
 end
 
+-- v1.96 (unlock-only progression, MDA-613, plan docs/plans/UNLOCK_ONLY_v1.0.md Task 1, ADR-016; Kepu 2026-11-27 19:31 "take out the
+--   upgrade and stat system entirely so that people are just unlocking Dino's and mecha parts. Not upgrading the mecha parts", picks
+--   "Base numbers", "Level 1", "Flat 10 points each"; 19:43 "Build"). Pure helpers, nothing else changes (buy / canBuy / spent /
+--   effects keep their 1.95 behaviour for the switch-off path):
+--   * isPart(id, dino) -> true for a live mecha path (LIVE_MECH, not soon) the dino sees (seesPath); stat rows and other dinos'
+--     parts -> false.
+--   * unlockSteps(steps, dino, given) -> a new table with every path id of PATH_ORDER: 1 when isPart(id, dino) and (the step in
+--     steps >= 1 or given[id]), else 0 (stat rows always 0 = the dino's base numbers). steps / given may be nil.
+--   * PART_PRICE = 10 (points per part unlock; SkillServer's script attribute SkillPartPrice overrides it).
+SkillTree.PART_PRICE = 10
+function SkillTree.isPart(id, dino)
+	local p = type(id) == "string" and SkillTree.PATHS[id] or nil
+	return p ~= nil and SkillTree.LIVE_MECH[id] == true and not p.soon and SkillTree.seesPath(p, dino)
+end
+function SkillTree.unlockSteps(steps, dino, given)
+	local out = {}
+	for _, id in ipairs(SkillTree.PATH_ORDER) do
+		local n = type(steps) == "table" and tonumber(steps[id]) or 0
+		local own = (n ~= nil and n >= 1) or (type(given) == "table" and given[id] == true)
+		out[id] = (own and SkillTree.isPart(id, dino)) and 1 or 0
+	end
+	return out
+end
+
 return SkillTree
