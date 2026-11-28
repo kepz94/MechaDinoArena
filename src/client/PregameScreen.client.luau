@@ -59,6 +59,10 @@ VERSION = "1.8" -- v1.8 coming soon + locked dinos
 VERSION = "1.9" -- v1.9 island pick back to the Lab
 VERSION = "1.10" -- v1.10 Team Deathmatch titles
 VERSION = "1.11" -- v1.11 Free for All lineup (B: two rows of 4) + intro
+VERSION = "1.12" -- v1.12 unlock-only: FULL KIT · R$149
+-- v1.12 (unlock-only progression, MDA-617, plan docs/plans/UNLOCK_ONLY_v1.0.md Task 5, ADR-016; Kepu pick "Dino + all its parts"): while
+--   the player's SkillUnlockOnly is true and script attribute PregameFullKitTextEnabled ~= false (read per draw) the Robux button of
+--   a locked dino reads "FULL KIT · R$149" (1.11: "MAXED · R$149"). Same purchase.
 -- v1.11 (Free for All, Kepu 2026-11-26 "Let's do 1. 2 3 like you suggested" (3 = Free for All); 19:21 "Build" on mockup docs/mockups/arena_modes_v0.3.html (FFA: 8 dinos, first to 20 kills or most at 10:00, tie = fewer deaths, top 3 count as a win, bots hunt anyone); 19:59 lineup pick "B" (docs/mockups/ffa_lineup_v0.1/B_two_rows.jpg)): while ReplicatedStorage.Practice PrMode == "ffa" (PracticeServer 1.18) and script
 --   attribute PregameFfaEnabled ~= false (read per refresh / frame):
 --   * LINEUP: all 8 seats, you first, then your seat group, then the other: two rows of 4 (columns 225 wide, 3D 110 high at y 74
@@ -1017,6 +1021,8 @@ local function drawSelect()
 	do -- v1.8
 		local lk = (not parts) and lockOf(d) or nil
 		maxBtn.Visible = lk == "locked"
+		maxBtn.Text = (player:GetAttribute("SkillUnlockOnly") == true and script:GetAttribute("PregameFullKitTextEnabled") ~= false)
+			and "FULL KIT · R$149" or "MAXED · R$149" -- v1.12
 		if lk == "locked" then goBtn.Text = "UNLOCK · 40 PTS" elseif lk == "soon" then goBtn.Text = "COMING SOON" end
 	end
 	-- the slide: parts step widens the dino and hides the roster

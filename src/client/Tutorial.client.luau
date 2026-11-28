@@ -111,6 +111,11 @@ VERSION = "1.7" -- v1.7 welcome screen, dino passives, JUMP parts in step 6
 VERSION = "1.7.1" -- v1.7.1 the reveal's dino fits (wider camera)
 VERSION = "1.8" -- v1.8 the tutorial ends with the first match
 VERSION = "1.9" -- v1.9 welcome FIGHT tile: 4v4 Arena matches
+VERSION = "1.10" -- v1.10 unlock-only copy + level-1 ability cards
+-- v1.10 (unlock-only progression, MDA-617, plan docs/plans/UNLOCK_ONLY_v1.0.md Task 5, ADR-016): while the player's SkillUnlockOnly is
+--   true and script attribute TutUnlockCopyEnabled ~= false (read per draw): the gear sheet reads "All unlocked. They're yours." and
+--   its part cards "UNLOCKED" (1.9: "All maxed." / "MAXED ★"); the showcase ability cards keep their type and line but drop the
+--   stat chips (they were the step-4 numbers; parts are level 1 now). Passive cards unchanged.
 -- v1.9 (bug hunt 2026-11-27 item 3; Kepu 16:49 "Okay let's do those", copy "FIGHT · 4v4 Arena matches"): while script attribute
 --   TutWelcomeArenaCopyEnabled ~= false (default true, read per draw) the welcome screen's FIGHT tile reads "4v4 Arena matches"
 --   (1.8: "Squad battles on the island"; no island bots since v1086). Layout, the other two tiles unchanged. false = 1.8.
@@ -1294,6 +1299,7 @@ local function drawShowcase2()
 		if not d then return end
 		for _, c in ipairs(d:GetChildren()) do if not c:IsA("UICorner") and not c:IsA("UIStroke") then c:Destroy() end end
 		local inf = SC_INFO[id] or {"PASSIVE", "", {}}
+		if player:GetAttribute("SkillUnlockOnly") == true and script:GetAttribute("TutUnlockCopyEnabled") ~= false then inf = {inf[1], inf[2], {}} end -- v1.10
 		local ty = SC_TYPE[inf[1]] or C.muted
 		local p0 = px(0.6, 5)
 		local nm = text(d, pname(id), "title", cq(1.6, 12), C.white, {Position = UDim2.fromOffset(p0 * 1.5, p0), TextWrapped = false, ZIndex = 7})
@@ -1393,6 +1399,7 @@ local function drawShowcase2()
 		view.rows = {}
 		for i, id in ipairs(ids) do
 			local inf = SC_INFO[id] or {"PASSIVE", "", {}}
+			if player:GetAttribute("SkillUnlockOnly") == true and script:GetAttribute("TutUnlockCopyEnabled") ~= false then inf = {inf[1], inf[2], {}} end -- v1.10
 			local ty = SC_TYPE[inf[1]] or C.muted
 			local b = z(make("TextButton", {Name = "Ab_" .. id, Text = "", AutoButtonColor = true, BackgroundColor3 = C.card, LayoutOrder = i}, sc), 6)
 			corner(b, UDim.new(0, px(0.6, 4)))
@@ -1822,7 +1829,8 @@ local function scenePartsCards(col, add, ids)
 		local nm = text(cg, pname(id), "black", px(1.5, 13), C.white, {LayoutOrder = 1, TextWrapped = true, AutomaticSize = Enum.AutomaticSize.None,
 			Size = UDim2.new(1, 0, 0, px(3.2, 24)), TextScaled = true, TextXAlignment = Enum.TextXAlignment.Left})
 		make("UITextSizeConstraint", {MaxTextSize = px(1.5, 13), MinTextSize = 9}, nm)
-		text(cg, passive and "PASSIVE ★" or "MAXED ★", "black", px(1.2, 11), passive and C.muted or C.yellow, {LayoutOrder = 2})
+		local unl = player:GetAttribute("SkillUnlockOnly") == true and script:GetAttribute("TutUnlockCopyEnabled") ~= false -- v1.10
+		text(cg, passive and "PASSIVE ★" or (unl and "UNLOCKED" or "MAXED ★"), "black", px(1.2, 11), passive and C.muted or C.yellow, {LayoutOrder = 2})
 		task.delay(0.06 * i, function() if cg.Parent then tween(cg, 0.3, {GroupTransparency = 0}) end end)
 	end
 end
@@ -1894,7 +1902,7 @@ function render()
 		local free = player:GetAttribute("FreeDino")
 		local key = (type(free) == "string" and free ~= "") and free or dino
 		local ids = partsOf(key, false, true) -- v1.1: the body is still the old dino here, so its parts are not published yet
-		local col, add = sceneColumn(string.upper(dinoName(key)) .. "'S GEAR", #ids .. " MECHA PARTS", "All maxed. They're yours.")
+		local col, add = sceneColumn(string.upper(dinoName(key)) .. "'S GEAR", #ids .. " MECHA PARTS", (player:GetAttribute("SkillUnlockOnly") == true and script:GetAttribute("TutUnlockCopyEnabled") ~= false) and "All unlocked. They're yours." or "All maxed. They're yours.") -- v1.10
 		scenePartsCards(col, add, ids)
 		if player:GetAttribute("TutLastResult") == "full" then add(text(col, "Training is full. Trying again.", "body", px(1.5, 14), C.orange)) end
 		add(cta(col, "START TRAINING", function() send("next") fullRetry = true end))

@@ -30,6 +30,10 @@ local RunService = game:GetService("RunService")
 
 local VERSION = "1.0"
 VERSION = "1.1" -- v1.1 card starts folded, toast on every server
+VERSION = "1.2" -- v1.2 unlock-only: step 2 copy
+-- v1.2 (unlock-only progression, MDA-617, plan docs/plans/UNLOCK_ONLY_v1.0.md Task 5): while the player's SkillUnlockOnly is true and
+--   script attribute FsUnlockCopyEnabled ~= false step 2 reads "UNLOCK A PART IN THE LAB" (1.1: "SPEND A POINT IN THE LAB"); the
+--   tick (FirstStepsServer: SkillRequest "buy" + "ok") is unchanged.
 -- v1.1 (Kepu 2026-11-27 14:41 "The play button being constantly there and the list being constantly open is annoying ... Remove the
 --   play button"): the PLAY button is off through FirstStepsPlayEnabled = false (set on this script in Edit; the 1.0 switch). While
 --   script attribute FirstStepsStartFolded ~= false (default true, read at start) the card starts folded to one line ("FIRST STEPS
@@ -47,6 +51,12 @@ local C = {plate = Color3.fromRGB(13, 18, 24), plate2 = Color3.fromRGB(24, 31, 4
 	line = Color3.fromRGB(46, 58, 76), volt = Color3.fromRGB(127, 233, 255)}
 local STEPS = {{"PLAY YOUR FIRST MATCH", "+1 PT"}, {"SPEND A POINT IN THE LAB", "+1 PT"}, {"CLAIM A QUEST AT THE STAND", "+1 PT"},
 	{"WIN AN ARENA MATCH", "+2 PTS"}}
+local function fsUnlockCopy() -- v1.2
+	STEPS[2][1] = (player:GetAttribute("SkillUnlockOnly") == true and script:GetAttribute("FsUnlockCopyEnabled") ~= false)
+		and "UNLOCK A PART IN THE LAB" or "SPEND A POINT IN THE LAB"
+end
+fsUnlockCopy()
+player:GetAttributeChangedSignal("SkillUnlockOnly"):Connect(fsUnlockCopy)
 
 local function new(cls, props, parent)
 	local o = Instance.new(cls)

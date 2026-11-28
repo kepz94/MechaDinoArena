@@ -88,6 +88,10 @@ M.Version = "1.0"
 M.Version = "1.2" -- v1.2 every part, no roll (1.1 = hookarm back)
 M.Version = "1.3" -- v1.3 Blood Rush, Mecha Legs, Glider, Stun Breaker
 M.Version = "1.4" -- v1.4 Elite combos
+M.Version = "1.5" -- v1.5 unlock-only: bot parts at level 1
+-- v1.5 (unlock-only progression, MDA-615, plan docs/plans/UNLOCK_ONLY_v1.0.md Task 3, ADR-016): while ServerScriptService.SkillServer's
+--   SkillUnlockOnlyEnabled ~= false and PracticeServer's script attribute PrKitUnlockOnlyEnabled ~= false (default on, read per spec)
+--   prepareSpec's rolled steps go through SkillTree.unlockSteps: the bot's parts at level 1 and no stat rows, like players. false = 1.4.
 
 local RETRY = 2
 local OK_RESULTS = {ok = true, placing = true, hit = true, dash = true, zip = true, miss = true, missed = true, fired = true,
@@ -259,6 +263,14 @@ function M.prepareSpec(spec, rng)
 		for _, id in ipairs(ids) do if ST.canBuy(steps, id, points, species) then table.insert(can, id) end end
 		if #can == 0 then break end
 		steps = ST.buy(steps, can[rng:NextInteger(1, #can)], points, species)
+	end
+	do -- v1.5: unlock-only (see the header)
+		local ss = game:GetService("ServerScriptService"):FindFirstChild("SkillServer")
+		local pr = script.Parent
+		if ST.unlockSteps and ss and ss:GetAttribute("SkillUnlockOnlyEnabled") ~= false
+			and not (pr and pr:GetAttribute("PrKitUnlockOnlyEnabled") == false) then
+			steps = ST.unlockSteps(steps, species)
+		end
 	end
 	local loadout = {}
 	for n = 1, ST.SLOTS or 4 do loadout[n] = false end
